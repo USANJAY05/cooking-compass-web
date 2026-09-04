@@ -9,20 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-query": "latest",
-    "axios": "latest",
-    "keycloak-js": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "react-hot-toast": "latest",
-    "react-router-dom": "latest"
+    "@tanstack/react-query": "^5.90.5",
+    "axios": "^1.12.2",
+    "keycloak-js": "^26.2.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "latest",
-    "autoprefixer": "latest",
-    "postcss": "latest",
-    "tailwindcss": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "@vitejs/plugin-react": "^5.0.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
   }
 }
