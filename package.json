@@ -1,7 +1,7 @@
 {
   "name": "muveth-kitchen-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,12 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
+    "@tanstack/react-query": "latest",
+    "axios": "latest",
     "keycloak-js": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "react-hot-toast": "latest",
+    "react-router-dom": "latest"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "latest",
+    "autoprefixer": "latest",
+    "postcss": "latest",
+    "tailwindcss": "latest",
     "typescript": "latest",
     "vite": "latest"
   }
