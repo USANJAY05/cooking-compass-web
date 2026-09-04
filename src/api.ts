@@ -1,8 +1,14 @@
+import axios from 'axios'
 import { keycloak } from './keycloak'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+apiClient.interceptors.request.use(async (config) => {
   if (keycloak.authenticated) {
     try {
       await keycloak.updateToken(30)
@@ -10,45 +16,30 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       console.warn('Unable to refresh Keycloak token', error)
     }
   }
-
-  const headers = new Headers(options.headers)
-  headers.set('Content-Type', 'application/json')
-  if (keycloak.token) headers.set('Authorization', `Bearer ${keycloak.token}`)
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  })
-
-  if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `API request failed with status ${response.status}`)
-  }
-
-  if (response.status === 204) return undefined as T
-  return response.json() as Promise<T>
-}
+  if (keycloak.token) config.headers.Authorization = `Bearer ${keycloak.token}`
+  return config
+})
 
 export const api = {
   recipes: {
-    list: (params = '') => apiFetch(`/api/v1/recipes/${params ? `?${params}` : ''}`),
-    search: (q: string, params = '') => apiFetch(`/api/v1/recipes/search?q=${encodeURIComponent(q)}${params ? `&${params}` : ''}`),
-    get: (id: number) => apiFetch(`/api/v1/recipes/${id}`),
+    list: (params?: Record<string, unknown>) => apiClient.get('/api/v1/recipes/', { params }),
+    search: (q: string, params?: Record<string, unknown>) => apiClient.get('/api/v1/recipes/search', { params: { q, ...params } }),
+    get: (id: number | string) => apiClient.get(`/api/v1/recipes/${id}`),
   },
   routines: {
-    list: (params = '') => apiFetch(`/api/v1/routines/${params ? `?${params}` : ''}`),
-    search: (q: string, params = '') => apiFetch(`/api/v1/routines/search?q=${encodeURIComponent(q)}${params ? `&${params}` : ''}`),
-    get: (id: number) => apiFetch(`/api/v1/routines/${id}`),
+    list: (params?: Record<string, unknown>) => apiClient.get('/api/v1/routines/', { params }),
+    search: (q: string, params?: Record<string, unknown>) => apiClient.get('/api/v1/routines/search', { params: { q, ...params } }),
+    get: (id: number | string) => apiClient.get(`/api/v1/routines/${id}`),
   },
   cart: {
-    get: (days = 7) => apiFetch(`/api/v1/cart/?days=${days}`),
+    get: (days = 7) => apiClient.get('/api/v1/cart/', { params: { days } }),
   },
   categories: {
-    list: (page = 1, pageSize = 20) => apiFetch(`/api/v1/categories/?page=${page}&page_size=${pageSize}`),
-    search: (q: string) => apiFetch(`/api/v1/categories/search?q=${encodeURIComponent(q)}`),
+    list: (page = 1, pageSize = 20) => apiClient.get('/api/v1/categories/', { params: { page, page_size: pageSize } }),
+    search: (q: string) => apiClient.get('/api/v1/categories/search', { params: { q } }),
   },
   ingredients: {
-    list: (page = 1, pageSize = 20) => apiFetch(`/api/v1/ingredients/?page=${page}&page_size=${pageSize}`),
-    search: (q: string) => apiFetch(`/api/v1/ingredients/search?q=${encodeURIComponent(q)}`),
+    list: (page = 1, pageSize = 20) => apiClient.get('/api/v1/ingredients/', { params: { page, page_size: pageSize } }),
+    search: (q: string) => apiClient.get('/api/v1/ingredients/search', { params: { q } }),
   },
 }
