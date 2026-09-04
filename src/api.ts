@@ -1,12 +1,23 @@
+import { keycloak } from './keycloak'
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (keycloak.authenticated) {
+    try {
+      await keycloak.updateToken(30)
+    } catch (error) {
+      console.warn('Unable to refresh Keycloak token', error)
+    }
+  }
+
+  const headers = new Headers(options.headers)
+  headers.set('Content-Type', 'application/json')
+  if (keycloak.token) headers.set('Authorization', `Bearer ${keycloak.token}`)
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    headers,
   })
 
   if (!response.ok) {
