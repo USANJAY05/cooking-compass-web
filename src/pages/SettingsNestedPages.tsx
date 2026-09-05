@@ -1,0 +1,102 @@
+import { useEffect, useMemo, useState } from 'react'
+import { keycloak } from '../keycloak'
+import toast from 'react-hot-toast'
+
+const page = 'mx-auto w-full max-w-3xl px-1 pb-10 sm:px-2 lg:max-w-4xl'
+const card = 'rounded-[19px] bg-white shadow-sm ring-1 ring-black/5'
+const divider = 'ml-[69px] h-px bg-black/5'
+
+function Header({ title, subtitle }: { title: string; subtitle: string }) {
+  return <div className="mb-6"><h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">{title}</h1><p className="mt-1.5 text-sm leading-6 text-slate-500">{subtitle}</p></div>
+}
+
+function BackLink() {
+  return <button type="button" onClick={() => window.history.back()} className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-moss hover:opacity-75">← Settings</button>
+}
+
+function OptionRow({ title, description, selected, onClick, icon }: { title: string; description?: string; selected: boolean; onClick: () => void; icon?: string }) {
+  return <button type="button" onClick={onClick} className="flex min-h-[76px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage/30">
+    <span className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[13px] text-lg ${selected ? 'bg-moss text-white' : 'bg-slate-100 text-slate-500'}`}>{icon || '○'}</span>
+    <span className="min-w-0 flex-1 pr-3"><span className="block text-[15px] font-extrabold text-ink">{title}</span>{description && <span className="mt-1 block text-[12.5px] leading-[18px] text-slate-500">{description}</span>}</span>
+    <span className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-2 ${selected ? 'border-moss' : 'border-slate-300'}`}>{selected && <span className="h-2.5 w-2.5 rounded-full bg-moss" />}</span>
+  </button>
+}
+
+export function AppearanceSettingsPage() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('muveth-theme') || 'system')
+  const options = [
+    ['system', 'System', 'Follow your device preference.', '◐'],
+    ['light', 'Light', 'A bright, clean MUVETH Kitchen experience.', '☀'],
+    ['dark', 'Dark', 'Use a darker interface for low-light cooking.', '☾'],
+    ['black', 'Black', 'A deeper black theme for OLED displays.', '●'],
+  ] as const
+
+  useEffect(() => {
+    localStorage.setItem('muveth-theme', theme)
+    const dark = theme === 'dark' || theme === 'black' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+    document.body.style.backgroundColor = dark ? (theme === 'black' ? '#000' : '#111827') : '#f7f5ef'
+  }, [theme])
+
+  return <div className={page}><BackLink /><Header title="Appearance" subtitle="Choose the look and feel of MUVETH Kitchen." /><div className={`${card} overflow-hidden`}>{options.map(([value, title, description, icon], i) => <div key={value}>{i > 0 && <div className={divider} />}<OptionRow title={title} description={description} selected={theme === value} icon={icon} onClick={() => setTheme(value)} /></div>)}</div><p className="mt-4 rounded-[14px] bg-sage/10 px-4 py-3 text-xs font-semibold leading-5 text-slate-500">Your choice is saved on this browser and is used the next time you open MUVETH Kitchen.</p></div>
+}
+
+export function RecipeCreationSettingsPage() {
+  const [mode, setMode] = useState(() => localStorage.getItem('muveth-recipe-creation-mode') || 'normal')
+  const options = [
+    ['normal', 'Normal mode', 'Use the complete recipe form. Best when you already know the recipe.'],
+    ['recording', 'Recording mode', 'Build the recipe while cooking with a step-by-step wizard. You can move between steps and keep all changes.'],
+  ] as const
+  const choose = (value: string) => { setMode(value); localStorage.setItem('muveth-recipe-creation-mode', value); toast.success(`${value === 'normal' ? 'Normal' : 'Recording'} mode selected`) }
+  return <div className={page}><BackLink /><Header title="Recipe creation" subtitle="Choose how the Create Recipe button should start." /><div className="space-y-3">{options.map(([value, title, description]) => <div key={value} className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ${mode === value ? 'ring-moss' : 'ring-black/5'}`}><OptionRow title={title} description={description} selected={mode === value} icon={value === 'normal' ? '▤' : '●'} onClick={() => choose(value)} /></div>)}</div></div>
+}
+
+export function InteractiveCookingSettingsPage() {
+  const [mode, setMode] = useState(() => localStorage.getItem('muveth-interactive-cooking-mode') || 'liberal')
+  const options = [
+    ['liberal', 'Liberal', 'Move between cooking steps freely. Timers and checkboxes are helpful, but never block you.', '◈'],
+    ['strict', 'Strict', 'Complete the current step and finish its timer before moving to the next step.', '◇'],
+  ] as const
+  const choose = (value: string) => { setMode(value); localStorage.setItem('muveth-interactive-cooking-mode', value); toast.success(`${value === 'liberal' ? 'Liberal' : 'Strict'} cooking selected`) }
+  return <div className={page}><BackLink /><Header title="Interactive cooking" subtitle="Choose how much guidance MUVETH Kitchen should enforce while you cook." /><div className={`${card} overflow-hidden`}>{options.map(([value, title, description, icon], i) => <div key={value}>{i > 0 && <div className={divider} />}<OptionRow title={title} description={description} selected={mode === value} icon={icon} onClick={() => choose(value)} /></div>)}</div><div className="mt-4 flex items-center gap-3 rounded-[14px] bg-sage/10 px-4 py-3 text-xs font-semibold leading-5 text-slate-500"><span className="text-base text-moss">✓</span><span>Liberal is the default so you can cook at your own pace.</span></div></div>
+}
+
+function getProfile() {
+  const token = keycloak.tokenParsed as Record<string, unknown> | undefined
+  return {
+    name: String(token?.name || token?.preferred_username || 'Not provided'),
+    username: String(token?.preferred_username || 'Not provided'),
+    email: String(token?.email || 'Not provided'),
+    id: String(token?.sub || 'Not available'),
+  }
+}
+
+export function AccountSettingsPage() {
+  const profile = useMemo(getProfile, [])
+  const items = [['◉', 'Display name', profile.name], ['◆', 'Username', profile.username], ['✉', 'Email address', profile.email], ['◎', 'Account ID', profile.id]]
+  return <div className={page}><BackLink /><Header title="Account information" subtitle="Your profile details from your signed-in account." /><div className={`${card} overflow-hidden`}>{items.map(([icon, label, value], i) => <div key={label}>{i > 0 && <div className={divider} />}<div className="flex min-h-[82px] items-center gap-3 px-4 py-3"><span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[13px] bg-sage/10 text-lg text-moss">{icon}</span><div className="min-w-0"><p className="text-xs font-bold text-slate-400">{label}</p><p className="mt-1 break-all text-base font-extrabold text-ink">{value}</p></div></div></div>)}</div></div>
+}
+
+export function SecuritySettingsPage() {
+  const [loading, setLoading] = useState(false)
+  const logout = async () => { if (loading) return; setLoading(true); try { await keycloak.logout({ redirectUri: window.location.origin }) } catch { setLoading(false); toast.error('Unable to sign out right now.') } }
+  return <div className={page}><BackLink /><Header title="Security" subtitle="Manage your current session and sign out securely." /><div className="mb-5 flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-sm ring-1 ring-black/5"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-sky-50 text-xl text-sky-600">✓</span><div><p className="text-base font-extrabold text-ink">Signed-in session</p><p className="mt-1 text-[13px] leading-5 text-slate-500">Your account is currently authenticated in this browser.</p></div></div><button type="button" onClick={logout} disabled={loading} className="mb-3 flex h-[52px] w-full items-center justify-center gap-2 rounded-[15px] border border-red-200 bg-red-50 text-sm font-extrabold text-red-600 disabled:opacity-60">↪ {loading ? 'Signing out…' : 'Log out'}</button><button type="button" onClick={logout} disabled={loading} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[15px] bg-moss text-sm font-extrabold text-white disabled:opacity-60">Full browser logout ↗</button></div>
+}
+
+export function AboutSettingsPage() {
+  const version = '1.0.0'
+  const openGithub = () => window.open('https://github.com/USANJAY05/cooking-compass', '_blank', 'noopener,noreferrer')
+  return <div className={page}><BackLink /><div className="mb-7 rounded-[25px] bg-white px-6 py-7 text-center shadow-sm ring-1 ring-black/5"><div className="mx-auto flex h-[62px] w-[62px] items-center justify-center rounded-[20px] bg-sage/10 text-2xl text-moss">✦</div><h1 className="mt-4 text-2xl font-black tracking-tight text-ink">MUVETH Kitchen</h1><div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-black tracking-[.16em]"><span className="h-1.5 w-1.5 rounded-full bg-green-500" />MUVETH <span className="text-slate-300">/</span> <span className="text-moss">HEALTH</span></div><p className="mx-auto mt-5 max-w-md text-[13px] leading-5 text-slate-500">Create recipes, adjust ingredients, and understand the nutrition in every meal.</p><p className="mt-3 text-xs font-semibold text-slate-400">Move better. Eat better. Live better.</p></div><p className="mb-2 ml-1 text-[10.5px] font-black tracking-[.125em] text-slate-400">APP INFORMATION</p><div className={`${card} mb-6 overflow-hidden px-4`}>{[['Version', version], ['Brand', 'MUVETH'], ['Division', 'Health'], ['Created by', 'Sanjay and Sukin']].map(([label, value], i) => <div key={label}>{i > 0 && <div className="h-px bg-black/5" />}<div className="flex min-h-[58px] items-center justify-between gap-4"><span className="text-xs font-semibold text-slate-400">{label}</span><span className="text-right text-[13px] font-extrabold text-ink">{value}</span></div></div>)}</div><p className="mb-2 ml-1 text-[10.5px] font-black tracking-[.125em] text-slate-400">RESOURCES</p><div className={`${card} mb-7 overflow-hidden`}><button type="button" onClick={openGithub} className="flex min-h-[70px] w-full items-center gap-3 px-4 text-left hover:bg-slate-50"><span className="flex h-[43px] w-[43px] items-center justify-center rounded-[13px] bg-sage/10 text-lg text-moss">↗</span><span className="flex-1"><b className="block text-sm font-extrabold text-ink">GitHub Repository</b><small className="text-xs text-slate-500">View the source code</small></span><span className="text-slate-400">↗</span></button><div className={divider}/><button type="button" onClick={() => window.location.assign('/settings/privacy')} className="flex min-h-[70px] w-full items-center gap-3 px-4 text-left hover:bg-slate-50"><span className="flex h-[43px] w-[43px] items-center justify-center rounded-[13px] bg-sage/10 text-lg text-moss">◈</span><span className="flex-1"><b className="block text-sm font-extrabold text-ink">Privacy Policy</b><small className="text-xs text-slate-500">How your data is handled</small></span><span className="text-slate-400">›</span></button><div className={divider}/><button type="button" onClick={() => window.location.assign('/settings/terms')} className="flex min-h-[70px] w-full items-center gap-3 px-4 text-left hover:bg-slate-50"><span className="flex h-[43px] w-[43px] items-center justify-center rounded-[13px] bg-sage/10 text-lg text-moss">♡</span><span className="flex-1"><b className="block text-sm font-extrabold text-ink">Terms of Service</b><small className="text-xs text-slate-500">Terms and conditions</small></span><span className="text-slate-400">›</span></button></div><p className="text-center text-[9.5px] font-black tracking-[.17em] text-slate-400">MUVETH · HEALTH</p></div>
+}
+
+export function PrivacyPolicyPage() {
+  return <LegalPage title="Privacy Policy"><p>We aim to keep MUVETH Kitchen useful, transparent, and respectful of your data.</p><h2>Account information</h2><p>Your signed-in identity is provided by Keycloak. The web application uses the authenticated identity to associate your account with application features.</p><h2>Authentication</h2><p>Authentication is handled by Keycloak using OpenID Connect and PKCE. The application does not ask for or store your Keycloak password.</p><h2>Local preferences</h2><p>Settings such as appearance and cooking preferences may be stored locally in your browser so the experience can remember your choices.</p><h2>Contact</h2><p>For questions about privacy or data handling, contact the MUVETH Kitchen team.</p></LegalPage>
+}
+
+export function TermsPage() {
+  return <LegalPage title="Terms of Service"><p>By using MUVETH Kitchen, you agree to use the application responsibly and only with accounts you are authorized to use.</p><h2>Use of the service</h2><p>MUVETH Kitchen provides recipe, ingredient, nutrition, routine, and cooking-support features. Information shown by the application should be used as guidance and checked against your own needs.</p><h2>Your account</h2><p>You are responsible for maintaining appropriate access to your account and for activity performed through it.</p><h2>Availability</h2><p>Features may change, be improved, or temporarily become unavailable as the product develops.</p><h2>Contact</h2><p>Questions about these terms can be directed to the MUVETH Kitchen team.</p></LegalPage>
+}
+
+function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div className={page}><BackLink /><Header title={title} subtitle="MUVETH Kitchen · Health" /><article className="space-y-5 rounded-[19px] bg-white p-5 text-sm leading-6 text-slate-600 shadow-sm ring-1 ring-black/5 sm:p-7">{children}</article></div>
+}
