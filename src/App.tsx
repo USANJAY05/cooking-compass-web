@@ -19,15 +19,18 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: '●' },
 ]
 
-function LoginPage() {
+function LoginPage({ authReady }: { authReady: boolean }) {
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
 
   const login = async () => {
-    if (loginLoading) return
+    if (loginLoading || !authReady) return
     setLoginError('')
     setLoginLoading(true)
     try {
+      // keycloak.init() must complete before login() is called. The adapter
+      // is created during initialization, so calling login before that can
+      // produce "this.#adapter.login" errors in keycloak-js.
       await keycloak.login({
         redirectUri: `${window.location.origin}/recipes`,
         scope: 'openid profile email',
@@ -59,9 +62,9 @@ function LoginPage() {
             <div><strong>♡</strong><span>Nutrition</span></div>
           </div>
           <div className="actions">
-            <button onClick={login} className="primary-button" disabled={loginLoading}>
-              <span className="button-copy"><b>{loginLoading ? 'Opening your kitchen…' : 'Continue with MUVETH'}</b><small>Secure sign in</small></span>
-              {!loginLoading && <span className="button-arrow">↗</span>}
+            <button onClick={login} className="primary-button" disabled={loginLoading || !authReady}>
+              <span className="button-copy"><b>{loginLoading ? 'Opening your kitchen…' : authReady ? 'Continue with MUVETH' : 'Preparing secure sign-in…'}</b><small>Secure sign in</small></span>
+              {authReady && !loginLoading && <span className="button-arrow">↗</span>}
             </button>
           </div>
           {loginError && <p className="error-message">{loginError}</p>}
@@ -112,22 +115,14 @@ function AuthBootstrap() {
   const initStarted = useRef(false)
 
   useEffect(() => {
-    // The public landing page must render immediately when the user is not
-    // returning from Keycloak. This avoids blocking the login screen on a
-    // check-sso iframe/browser check.
-    const params = new URLSearchParams(window.location.search)
-    const isKeycloakCallback = params.has('code') && params.has('state')
-
-    if (!isKeycloakCallback) {
-      setStatus('ready')
-      return
-    }
-
     if (initStarted.current) return
     initStarted.current = true
 
     let cancelled = false
 
+    // Always initialize Keycloak, even on the public login page. keycloak-js
+    // creates its internal browser adapter during init(); calling login()
+    // before init() is complete causes "this.#adapter.login" to be undefined.
     keycloak.init(keycloakConfig).then((authenticated) => {
       if (cancelled) return
       setStatus('ready')
@@ -144,12 +139,11 @@ function AuthBootstrap() {
     return () => { cancelled = true }
   }, [])
 
-  if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Signing you in…</p></div></div>
   if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not start.</h1><p>Check the Keycloak URL, realm, client ID, and redirect URI configuration.</p><button onClick={() => window.location.href = '/'}>Back to login</button></div></div>
 
   return (
     <Routes>
-      <Route path="/" element={keycloak.authenticated ? <Navigate to="/recipes" replace /> : <LoginPage />} />
+      <Route path="/" element={keycloak.authenticated ? <Navigate to="/recipes" replace /> : <LoginPage authReady={status === 'ready'} />} />
       <Route element={<ProtectedRoutes />}>
         <Route path="/recipes" element={<RecipesPage />} />
         <Route path="/routines" element={<RoutinePage />} />
