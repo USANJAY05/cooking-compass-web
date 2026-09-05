@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
 import { keycloak, keycloakConfig } from './keycloak'
@@ -31,8 +31,6 @@ function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
   return keycloakInitPromise
 }
 
-// Only an authorization code is an authentication callback. Logout redirects
-// must never be sent through the login callback handler.
 function hasKeycloakCallback() {
   const params = new URLSearchParams(window.location.search)
   return params.has('code')
@@ -46,7 +44,6 @@ function LoginPage() {
 
   useEffect(() => {
     let cancelled = false
-
     initializeKeycloak()
       .then((authenticated) => {
         if (cancelled) return
@@ -62,7 +59,6 @@ function LoginPage() {
         setCheckingSession(false)
         setLoginError(error instanceof Error ? error.message : 'Unable to check your secure session.')
       })
-
     return () => { cancelled = true }
   }, [navigate])
 
@@ -80,9 +76,7 @@ function LoginPage() {
     }
   }
 
-  if (checkingSession) {
-    return <div className="app-state"><div><div className="state-dot" /><p>Checking your session…</p></div></div>
-  }
+  if (checkingSession) return <div className="app-state"><div><div className="state-dot" /><p>Checking your session…</p></div></div>
 
   return (
     <main className="page-shell">
@@ -94,13 +88,30 @@ function LoginPage() {
   )
 }
 
+const pageTitles: Record<string, string> = {
+  '/recipes': 'Recipes',
+  '/routines': 'Routine',
+  '/cart': 'Cart',
+  '/settings': 'Settings',
+  '/settings/appearance': 'Appearance',
+  '/settings/recipe-creation': 'Recipe Creation',
+  '/settings/interactive-cooking': 'Interactive Cooking',
+  '/settings/account': 'Account Information',
+  '/settings/security': 'Security',
+  '/settings/about': 'About',
+  '/settings/privacy': 'Privacy Policy',
+  '/settings/terms': 'Terms of Service',
+}
+
 function AppLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [loggingOut, setLoggingOut] = useState(false)
+  const pageTitle = pageTitles[location.pathname] ?? 'MUVETH Kitchen'
+  const isRecipes = location.pathname === '/recipes'
+  const isRoutine = location.pathname === '/routines'
+  const showPlus = isRecipes || isRoutine
 
-  // App sign-out clears the local Keycloak tokens but deliberately keeps the
-  // browser's Keycloak SSO session. Opening the login page again will run
-  // check-sso and, when that SSO session still exists, return to Recipes.
   const logout = async () => {
     if (loggingOut) return
     setLoggingOut(true)
@@ -115,7 +126,17 @@ function AppLayout() {
     }
   }
 
-  return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><img src={mobileLogo} alt="MUVETH Kitchen" className="sidebar-logo" /><span className="sidebar-wordmark">MUVETH <small>KITCHEN</small></span></button><nav className="sidebar-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>Cook. Nourish. Move.</h1></div><button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
+  const handleHeaderAction = () => {
+    if (isRecipes) {
+      toast('Create Recipe', { icon: '+' })
+      return
+    }
+    if (isRoutine) {
+      toast('Create Routine', { icon: '+' })
+    }
+  }
+
+  return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><img src={mobileLogo} alt="MUVETH Kitchen" className="sidebar-logo" /><span className="sidebar-wordmark">MUVETH <small>KITCHEN</small></span></button><nav className="sidebar-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>{pageTitle}</h1></div><div className="header-actions">{showPlus ? <button className="header-action" onClick={handleHeaderAction} aria-label={isRecipes ? 'Create recipe' : 'Create routine'} title={isRecipes ? 'Create recipe' : 'Create routine'}>+</button> : <button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button>}</div></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
 }
 
 function ProtectedRoutes() { return keycloak.authenticated ? <AppLayout /> : <Navigate to="/" replace /> }
@@ -140,14 +161,11 @@ function AuthBootstrap() {
       setStatus('ready')
       return
     }
-
     let cancelled = false
     initializeKeycloak()
       .then((authenticated) => {
         if (cancelled) return
-        if (!authenticated) {
-          throw new Error('Keycloak returned without an authenticated session.')
-        }
+        if (!authenticated) throw new Error('Keycloak returned without an authenticated session.')
         window.history.replaceState({}, document.title, '/recipes')
         setStatus('ready')
       })
@@ -157,7 +175,6 @@ function AuthBootstrap() {
         setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.')
         setStatus('error')
       })
-
     return () => { cancelled = true }
   }, [])
 
