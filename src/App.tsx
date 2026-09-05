@@ -112,6 +112,17 @@ function AuthBootstrap() {
   const initStarted = useRef(false)
 
   useEffect(() => {
+    // The public landing page must render immediately when the user is not
+    // returning from Keycloak. This avoids blocking the login screen on a
+    // check-sso iframe/browser check.
+    const params = new URLSearchParams(window.location.search)
+    const isKeycloakCallback = params.has('code') && params.has('state')
+
+    if (!isKeycloakCallback) {
+      setStatus('ready')
+      return
+    }
+
     if (initStarted.current) return
     initStarted.current = true
 
@@ -120,7 +131,8 @@ function AuthBootstrap() {
     keycloak.init(keycloakConfig).then((authenticated) => {
       if (cancelled) return
       setStatus('ready')
-      if (authenticated && window.location.pathname === '/') {
+
+      if (authenticated) {
         window.history.replaceState({}, '', '/recipes')
       }
     }).catch((error) => {
@@ -132,8 +144,8 @@ function AuthBootstrap() {
     return () => { cancelled = true }
   }, [])
 
-  if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Preparing MUVETH Kitchen…</p></div></div>
-  if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not start.</h1><p>Check the Keycloak URL, realm, client ID, and redirect URI configuration.</p><button onClick={() => window.location.reload()}>Try again</button></div></div>
+  if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Signing you in…</p></div></div>
+  if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not start.</h1><p>Check the Keycloak URL, realm, client ID, and redirect URI configuration.</p><button onClick={() => window.location.href = '/'}>Back to login</button></div></div>
 
   return (
     <Routes>
