@@ -1,45 +1,68 @@
 # MUVETH Kitchen Web
 
-MUVETH Kitchen is the web frontend for the MUVETH cooking platform. It provides an authenticated cooking workspace for discovering recipes, managing cooking routines, viewing the shopping cart, and accessing account settings.
+The web version of [Cooking Compass Mobile](https://github.com/USANJAY05/cooking_compass_mobile). The web application follows the same MUVETH Kitchen product language, authentication model, core navigation, and health-first visual design while using web-native React tooling.
 
 > **MUVETH** — Three Dimensions. One Life.
+>
+> **MUVETH Kitchen** — Cook. Nourish. Move.
 
-## Current Application Flow
+## Application Flow
 
 ```text
 Login
   ↓
 Recipes (Home)
-  ├── Routines
+  ├── Routine
   ├── Cart
   └── Settings
 ```
 
-After successful Keycloak authentication, the user is taken to the **Recipes** page, which is the main application home page.
+After Keycloak authentication, `/recipes` is the application's home page.
+
+## Mobile/Web Alignment
+
+The web application is being developed as the browser counterpart to `cooking_compass_mobile`.
+
+Shared product characteristics include:
+
+- MUVETH Kitchen branding
+- MUVETH navy `#172554`
+- Kitchen green `#22C55E`
+- Kitchen green dark `#15803D`
+- Light background `#F7FAF7`
+- Primary text `#132238`
+- Secondary text `#52606D`
+- Health-first green/orange nutrition accents
+- `Cook. Nourish. Move.` product language
+- Recipes, Routine, Cart, and Settings as the core navigation
+- Keycloak Authorization Code + PKCE authentication
+
+The source of truth for the mobile design system is the mobile repository's `BRAND.md` and theme tokens.
 
 ## Features
 
 - Keycloak authentication
-- Authorization Code flow with PKCE (S256)
-- Protected application routes
-- Recipes home page
+- Authorization Code flow with PKCE using S256
+- Protected routes
+- Recipes as the authenticated home page
 - Recipe search and API integration
-- Cooking routines page
+- Routine page
 - Shopping cart page
 - Settings page
-- Responsive desktop and mobile navigation
-- React Query for server-state management and caching
+- Desktop sidebar navigation
+- Mobile bottom navigation
 - Axios API client
-- Automatic Keycloak bearer-token injection
-- Keycloak token refresh before API requests
-- Toast notifications
+- TanStack React Query for server state and caching
+- Automatic bearer-token injection
+- Keycloak token refresh before protected API requests
+- React Hot Toast notifications
 - Loading, error, and empty states
-- Tailwind CSS styling
+- Tailwind CSS
 - TypeScript
 
 ## Tech Stack
 
-- **React**
+- **React 19**
 - **TypeScript**
 - **Vite**
 - **React Router DOM**
@@ -53,19 +76,16 @@ After successful Keycloak authentication, the user is taken to the **Recipes** p
 
 ```text
 src/
-├── api/                 # Axios/API integration
-├── components/          # Reusable UI components
-├── layouts/             # Application layouts/navigation
+├── api.ts
+├── keycloak.ts
+├── App.tsx
+├── main.tsx
 ├── pages/
-│   ├── Recipes/         # Main/home recipe experience
-│   ├── Routines/        # Cooking routines
-│   ├── Cart/            # Shopping cart
-│   └── Settings/        # User/application settings
-├── routes/              # React Router configuration and guards
-├── keycloak.ts          # Keycloak client configuration
-├── App.tsx              # Application root
-├── main.tsx             # React entry point
-└── index.css            # Tailwind/global styles
+│   ├── RecipesPage.tsx
+│   ├── RoutinePage.tsx
+│   ├── CartPage.tsx
+│   └── SettingsPage.tsx
+└── styles.css
 
 public/
 └── silent-check-sso.html
@@ -75,49 +95,72 @@ public/
 
 - Node.js 18+
 - npm
-- A running MUVETH Kitchen backend
-- A configured Keycloak realm and client
+- Running MUVETH Kitchen backend
+- Configured Keycloak realm/client
 
 ## Environment Variables
 
-Create a local `.env` file in the project root:
+Create a local `.env` file in the project root.
+
+The web configuration accepts the same Keycloak realm URL style used by the mobile application:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
-VITE_KEYCLOAK_URL=https://your-keycloak-server
-VITE_KEYCLOAK_REALM=your-realm
-VITE_KEYCLOAK_CLIENT_ID=muveth-kitchen-web
+VITE_KEYCLOAK_URL=http://localhost:8080/realms/cooking-compass
+VITE_KEYCLOAK_REALM=cooking-compass
+VITE_KEYCLOAK_CLIENT_ID=cooking-compass-mobile
 ```
 
-### Important
+`VITE_KEYCLOAK_REALM` is optional when `VITE_KEYCLOAK_URL` already contains `/realms/<realm>`; the web Keycloak adapter normalizes both forms.
 
-Do **not** put a Keycloak client secret in the frontend environment. Browser applications must use a public Keycloak client.
+Do **not** put a Keycloak client secret in the frontend. The browser client must be configured as a public client.
 
-The `.env` file is intentionally excluded from Git. Use `.env.example` as the configuration template.
+The `.env` file is not committed. Use `.env.example` as the starting template.
 
 ## Keycloak Configuration
 
-Configure the Keycloak client as a browser/public client using PKCE with the `S256` code challenge method.
+The web frontend uses the same OpenID Connect model as the mobile app: Authorization Code + PKCE.
 
-For local development, the client should allow the application's local origin, for example:
+Configure the Keycloak client with:
+
+- Public/browser client
+- PKCE method: `S256`
+- Valid redirect URI for local development:
+
+```text
+http://localhost:5173/recipes
+```
+
+You may also allow the development origin broadly during local setup:
 
 ```text
 http://localhost:5173/*
 ```
 
-The production frontend origin must also be added to the client's valid redirect URIs and web origins.
+Add the production frontend URL to Keycloak before deploying.
 
-The application uses:
+For silent SSO checks, the application serves:
 
 ```text
 /silent-check-sso.html
 ```
 
-for silent SSO checks.
+The exact redirect URI must match what is configured in Keycloak.
+
+## Why Login Can Fail
+
+The most common causes are configuration mismatches between the browser and Keycloak:
+
+1. `VITE_KEYCLOAK_URL` contains the realm path while the application also appends another realm path.
+2. The Keycloak client ID does not match the client configured for the web app.
+3. `/recipes` is not included in the client's valid redirect URIs.
+4. The browser origin is not included in the client's allowed web origins.
+5. The Keycloak server is reachable from the browser only on a private/local hostname or port.
+6. The Keycloak client is configured as confidential instead of public for this browser application.
+
+The current web implementation normalizes a Keycloak URL supplied either as a server base URL or as a `/realms/<realm>` URL to avoid the first class of mismatch.
 
 ## Installation
-
-Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/USANJAY05/cooking-compass-web.git
@@ -125,13 +168,13 @@ cd cooking-compass-web
 npm install
 ```
 
-Create `.env` using the variables above, then start the development server:
+Create `.env`, then run:
 
 ```bash
 npm run dev
 ```
 
-The Vite development server normally runs at:
+The default Vite development URL is:
 
 ```text
 http://localhost:5173
@@ -139,42 +182,50 @@ http://localhost:5173
 
 ## Production Build
 
-Build the application with:
-
 ```bash
 npm run build
-```
-
-Preview the production build locally with:
-
-```bash
 npm run preview
 ```
 
-## Authentication
+## Authentication Lifecycle
 
-The frontend initializes Keycloak when the application starts.
+At startup the application initializes Keycloak using `check-sso`. If the browser is already authenticated, it enters the application and routes to `/recipes`.
 
-Unauthenticated users are presented with the MUVETH Kitchen login experience. Selecting **Continue with Keycloak** redirects the user to Keycloak for authentication.
+Unauthenticated users see the MUVETH Kitchen login experience. Selecting **Continue with MUVETH** starts the Keycloak login flow and returns to `/recipes` after successful authentication.
 
-Authenticated users can access:
+Protected routes:
 
 - `/recipes`
 - `/routines`
 - `/cart`
 - `/settings`
 
-The application attaches the current Keycloak access token to protected backend requests as:
+Protected backend calls include:
 
 ```http
 Authorization: Bearer <access-token>
 ```
 
+The frontend refreshes the Keycloak token before API requests when necessary.
+
+## Navigation
+
+The authenticated web shell mirrors the mobile app's four primary tabs:
+
+| Route | Mobile equivalent | Purpose |
+|---|---|---|
+| `/recipes` | Recipes | Main/home recipe experience |
+| `/routines` | Routine | Cooking routines |
+| `/cart` | Cart | Shopping cart |
+| `/settings` | Settings | Account/application settings |
+
+Desktop uses a left sidebar. Mobile uses a bottom navigation bar.
+
 ## API Integration
 
-The frontend uses Axios and TanStack React Query for backend communication and server-state management.
+The API layer uses Axios and TanStack React Query and follows the backend OpenAPI contract.
 
-The API layer is based on the project's OpenAPI contract and currently provides integration points for:
+Current integration areas include:
 
 - Recipes
 - Recipe search
@@ -184,31 +235,27 @@ The API layer is based on the project's OpenAPI contract and currently provides 
 - Categories
 - Ingredients
 
-The backend URL is configured through `VITE_API_BASE_URL`.
+The backend URL is configured with `VITE_API_BASE_URL`.
 
-## Navigation
+## Toasts
 
-The authenticated application uses a common application shell with navigation between the core areas:
-
-| Route | Purpose |
-|---|---|
-| `/recipes` | Main/home recipe experience |
-| `/routines` | Cooking routines |
-| `/cart` | Shopping cart |
-| `/settings` | Settings and account actions |
-
-## Notifications
-
-Toast notifications are provided through React Hot Toast and are intended for user-facing feedback such as successful actions, API errors, authentication events, and other transient application messages.
+React Hot Toast is used for transient user feedback including request failures, logout failures, and other application-level notifications.
 
 ## Development Notes
 
-- Keep secrets out of frontend source code and Git.
-- Use environment variables for deployment-specific configuration.
-- Keep API models aligned with the backend OpenAPI specification.
-- Use React Query for API/server state instead of duplicating request state throughout components.
-- Keep reusable UI in components rather than duplicating page-level markup.
+- Keep secrets out of source control.
+- Keep `.env` local.
+- Keep API models and endpoints aligned with the backend OpenAPI specification.
+- Prefer React Query for server state.
+- Keep authentication in Keycloak rather than implementing a separate frontend login system.
+- Keep visual changes consistent with the mobile application's MUVETH Kitchen design tokens.
+
+## Related Project
+
+Mobile application:
+
+https://github.com/USANJAY05/cooking_compass_mobile
 
 ## License
 
-This project is currently maintained as part of the MUVETH Kitchen application and does not yet define a public open-source license.
+This project is maintained as part of the MUVETH Kitchen application and does not currently declare a public open-source license.
