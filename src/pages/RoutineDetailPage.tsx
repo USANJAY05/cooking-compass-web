@@ -23,16 +23,27 @@ export function RoutineDetailPage() {
   const days = recurrence.days_of_week ?? []
   const recipes = routine.recipes ?? []
   const description = String(routine.description ?? '').trim()
-  const canExpand = description.length > 100
+  const canExpand = description.length > 140
 
-  return <div className="detail-page">
-    <div className="detail-topbar"><button className="back-button" onClick={() => navigate(-1)}>← <span>Back</span></button><button className="icon-button" onClick={() => window.history.pushState({}, '', `/settings/routine/${routineId}`)}>✎</button></div>
-    <section className="routine-detail-header"><p className="detail-eyebrow">ROUTINE</p><h2>{routine.name || routine.title || 'Routine'}</h2>{description ? <div><p className="detail-description" style={{ WebkitLineClamp: canExpand && !descriptionExpanded ? 2 : 'unset' }}>{description}</p>{canExpand && <button className="view-more" onClick={() => setDescriptionExpanded(v => !v)}>{descriptionExpanded ? 'Show less' : 'View more'}⌄</button>}</div> : null}</section>
-    <div className="routine-meta"><span>↻ {specificDate ? 'Specific date' : frequency}</span>{routine.status ? <b>{routine.status}</b> : null}</div>
-    {recurrence.start_date ? <div className="routine-start">▣ {specificDate ? displayDate(recurrence.start_date) : `Starts ${recurrence.start_date}`}</div> : null}
+  return <div className="detail-page routine-detail-page">
+    <section className="routine-detail-header routine-hero-card">
+      <div className="routine-hero-copy">
+        <p className="detail-eyebrow">ROUTINE</p>
+        <h2>{routine.name || routine.title || 'Routine'}</h2>
+        {description ? <div className="routine-description-wrap">
+          <p className={`detail-description routine-description ${canExpand && !descriptionExpanded ? 'collapsed' : 'expanded'}`}>{description}</p>
+          {canExpand && <button type="button" className="view-more" onClick={() => setDescriptionExpanded(v => !v)}>{descriptionExpanded ? 'Show less ↑' : 'Show more ↓'}</button>}
+        </div> : <p className="routine-description-empty">No description added for this routine.</p>}
+        <div className="routine-meta">
+          <span>↻ {specificDate ? 'Specific date' : frequency}</span>
+          {routine.status ? <b>{routine.status}</b> : null}
+        </div>
+        {recurrence.start_date ? <div className="routine-start">▣ {specificDate ? displayDate(recurrence.start_date) : `Starts ${displayDate(recurrence.start_date)}`}</div> : null}
+      </div>
+    </section>
 
-    {frequency === 'WEEKLY' && !specificDate && days.length > 0 && <section className="detail-card schedule-card"><div className="section-heading"><div><p className="section-kicker">SCHEDULE</p><h3>Schedule</h3></div><span>{days.length} {days.length === 1 ? 'day' : 'days'}</span></div><div className="days-row">{DAY_LABELS.map((label, index) => <div key={label} className={`day-chip ${days.includes(index) ? 'active' : ''}`}>{label}</div>)}</div></section>}
+    {frequency === 'WEEKLY' && !specificDate && days.length > 0 && <section className="detail-card schedule-card"><div className="section-heading"><div><p className="section-kicker">SCHEDULE</p><h3>Your rhythm</h3></div><span>{days.length} {days.length === 1 ? 'day' : 'days'} / week</span></div><div className="days-row">{DAY_LABELS.map((label, index) => <div key={label} className={`day-chip ${days.includes(index) ? 'active' : ''}`}><small>{label.slice(0, 1)}</small><span>{label}</span></div>)}</div></section>}
 
-    <section className="detail-section"><div className="section-heading"><div><p className="section-kicker">MEAL PLAN</p><h3>Recipes</h3><span className="section-subtitle">{recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} scheduled</span></div><span>{recipes.length}</span></div>{recipes.length ? <div className="routine-recipe-list">{recipes.map((item: AnyRecord, index: number) => <button key={`${item.recipe_id ?? item.id}-${index}`} className="routine-recipe-row" onClick={() => { if (item.recipe_id ?? item.id) navigate(`/recipes/${item.recipe_id ?? item.id}`) }}><span className="routine-recipe-icon">🍴</span><span><strong>{item.recipe_name || item.name || `Recipe #${item.recipe_id ?? item.id}`}</strong><small>{item.quantity != null ? `${item.quantity} ${item.quantity_unit || ''}` : 'Recipe scheduled'}</small></span><b>›</b></button>)}</div> : <div className="empty-detail">🍴<span>No recipes scheduled</span></div>}</section>
+    <section className="detail-section"><div className="section-heading"><div><p className="section-kicker">MEAL PLAN</p><h3>Recipes</h3><span className="section-subtitle">{recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} scheduled</span></div><span>{recipes.length}</span></div>{recipes.length ? <div className="routine-recipe-list">{recipes.map((item: AnyRecord, index: number) => <button type="button" key={`${item.recipe_id ?? item.id}-${index}`} className="routine-recipe-row" onClick={() => { if (item.recipe_id ?? item.id) navigate(`/recipes/${item.recipe_id ?? item.id}`) }}><span className="routine-recipe-icon">🍴</span><span><strong>{item.recipe_name || item.name || `Recipe #${item.recipe_id ?? item.id}`}</strong><small>{item.quantity != null ? `${item.quantity} ${item.quantity_unit || ''}` : 'Recipe scheduled'}</small></span><b>›</b></button>)}</div> : <div className="empty-detail">🍴<span>No recipes scheduled</span></div>}</section>
   </div>
 }
