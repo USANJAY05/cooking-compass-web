@@ -19,14 +19,14 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: '●' },
 ]
 
-// Keycloak is intentionally lazy on the public login page. It is initialized
-// only when the user clicks the login button, or when Keycloak sends us back
-// with an authentication callback.
+// The adapter is initialized only on an explicit login click or when the
+// browser returns from Keycloak with an OAuth callback. We intentionally do
+// not run an SSO check on the public login page.
 let keycloakInitPromise: Promise<boolean> | null = null
 
-function initializeKeycloak() {
+function initializeKeycloak(options: typeof keycloakConfig = keycloakConfig) {
   if (!keycloakInitPromise) {
-    keycloakInitPromise = keycloak.init(keycloakConfig)
+    keycloakInitPromise = keycloak.init(options)
   }
   return keycloakInitPromise
 }
@@ -41,8 +41,7 @@ function LoginPage() {
     setLoginLoading(true)
 
     try {
-      // Keycloak is triggered only by the user's explicit login click.
-      // Initialize first so the keycloak-js browser adapter exists.
+      // This is the only place that starts Keycloak from the public page.
       await initializeKeycloak()
       await keycloak.login({
         redirectUri: `${window.location.origin}/recipes`,
@@ -107,9 +106,6 @@ function AppLayout() {
     setLoggingOut(true)
 
     try {
-      // Logout is also user-triggered only. At this point the authenticated
-      // application has already initialized Keycloak, so this directly opens
-      // the Keycloak logout flow from the user's click.
       await keycloak.logout({ redirectUri: window.location.origin })
     } catch (error) {
       console.error('Logout failed', error)
@@ -134,48 +130,11 @@ function AppLayout() {
   )
 }
 
-function ProtectedRoutes() { return keycloak.authenticated ? <AppLayout /> : <Navigate to="/" replace /> }
+function ProtectedRoutes() {
+  return keycloak.authenticated ? <AppLayout /> : <Navigate to="/" replace />
+}
 
-function AuthBootstrap() {
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const initStarted = useRef(false)
-
-  useEffect(() => {
-    // Do not initialize Keycloak just because the public login page loaded.
-    // Only initialize automatically when the browser is returning from the
-    // Keycloak authorization redirect.
-    const params = new URLSearchParams(window.location.search)
-    const isKeycloakCallback = params.has('code') && params.has('state')
-
-    if (!isKeycloakCallback) {
-      setStatus('ready')
-      return
-    }
-
-    if (initStarted.current) return
-    initStarted.current = true
-
-    let cancelled = false
-
-    initializeKeycloak().then((authenticated) => {
-      if (cancelled) return
-      setStatus('ready')
-
-      if (authenticated) {
-        window.history.replaceState({}, '', '/recipes')
-      }
-    }).catch((error) => {
-      if (cancelled) return
-      console.error('Keycloak initialization failed', error)
-      setStatus('error')
-    })
-
-    return () => { cancelled = true }
-  }, [])
-
-  if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Signing you in…</p></div></div>
-  if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not start.</h1><p>Check the Keycloak URL, realm, client ID, and redirect URI configuration.</p><button onClick={() => window.location.href = '/'}>Back to login</button></div></div>
-
+function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={keycloak.authenticated ? <Navigate to="/recipes" replace /> : <LoginPage />} />
@@ -190,6 +149,80 @@ function AuthBootstrap() {
   )
 }
 
+function AuthBootstrap() {
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const initStarted = useRef(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    // Keycloak can mutate the callback URL while processing the authorization
+    // response. The adapter must therefore finish initialization BEFORE the
+    // BrowserRouter is mounted. This also makes the /recipes callback reliable.
+    const params = new URLSearchParams(window.location.search)
+    const hasAuthCallback = params.has('code') && params.has('state')
+    const hasAuthError = params.has('error')
+
+    if (!hasAuthCallback && !hasAuthError) {
+      setStatus('ready')
+      return
+    }
+
+    if (initStarted.current) return
+    initStarted.current = true
+
+    if (hasAuthError) {
+      const description = params.get('error_description') || params.get('error') || 'Keycloak returned an authentication error.'
+      setErrorMessage(description)
+      setStatus('error')
+      return
+    }
+
+    let cancelled = false
+
+    // check-sso is used ONLY for the OAuth callback. It is never executed on
+    // the normal public login page, so opening the app does not contact SSO.
+    initializeKeycloak({ ...keycloakConfig, onLoad: 'check-sso' }).then((authenticated) => {
+      if (cancelled) return
+
+      if (!authenticated) {
+        throw new Error('Keycloak returned to the application without an authenticated session.')
+      }
+
+      // Remove the one-time authorization code before mounting the router.
+      window.history.replaceState({}, '', '/recipes')
+      setStatus('ready')
+    }).catch((error) => {
+      if (cancelled) return
+      console.error('Keycloak callback initialization failed', error)
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.')
+      setStatus('error')
+    })
+
+    return () => { cancelled = true }
+  }, [])
+
+  if (status === 'loading') {
+    return <div className="app-state"><div><div className="state-dot" /><p>Signing you in…</p></div></div>
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="app-state">
+        <div className="state-card">
+          <div className="state-dot error" />
+          <h1>Secure sign-in could not complete.</h1>
+          <p>{errorMessage || 'Check the Keycloak URL, realm, client ID, and redirect URI configuration.'}</p>
+          <button onClick={() => window.location.replace('/')}>Back to login</button>
+        </div>
+      </div>
+    )
+  }
+
+  // Important: BrowserRouter is mounted only after any Keycloak callback has
+  // been processed. On the normal login page, no Keycloak initialization runs.
+  return <BrowserRouter><AppRoutes /></BrowserRouter>
+}
+
 export default function App() {
-  return <QueryClientProvider client={queryClient}><BrowserRouter><AuthBootstrap /></BrowserRouter><Toaster position="top-right" toastOptions={{ duration: 3000 }} /></QueryClientProvider>
+  return <QueryClientProvider client={queryClient}><AuthBootstrap /><Toaster position="top-right" toastOptions={{ duration: 3000 }} /></QueryClientProvider>
 }
