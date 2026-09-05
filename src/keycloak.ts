@@ -36,11 +36,12 @@ export const keycloak = new Keycloak({
   clientId,
 })
 
-// Do not perform an automatic SSO check on the public login page.
-// The login button explicitly initializes Keycloak before starting login.
-// Query response mode makes the OAuth callback explicit and easy to process
-// before the React router is mounted.
+// Check the existing Keycloak SSO session without redirecting the user.
+// This lets the login route detect an already-authenticated session and
+// send the user directly to Recipes, while an unauthenticated user stays
+// on the public login page until they click the sign-in button.
 export const keycloakConfig = {
+  onLoad: 'check-sso' as const,
   pkceMethod: 'S256' as const,
   responseMode: 'query' as const,
   checkLoginIframe: false,
