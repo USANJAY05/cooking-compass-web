@@ -20,6 +20,8 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: '●' },
 ]
 
+const mobileLogo = 'https://raw.githubusercontent.com/USANJAY05/cooking_compass_mobile/main/assets/icon.png'
+
 let keycloakInitPromise: Promise<boolean> | null = null
 type KeycloakInitOptions = Parameters<typeof keycloak.init>[0]
 function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
@@ -49,8 +51,8 @@ function LoginPage() {
   return (
     <main className="page-shell">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
-      <nav className="nav"><div className="brand-mark"><span className="brand-dot" /><span>MUVETH</span><span className="brand-divider">/</span><span className="brand-health">HEALTH</span></div><span className="nav-caption">THREE DIMENSIONS. ONE LIFE.</span></nav>
-      <section className="hero"><div className="hero-copy"><div className="eyebrow">YOUR KITCHEN, REIMAGINED</div><h1>Eat well.<span>Live better.</span></h1><p>Create beautiful meals, understand what you eat, and make every recipe work for you.</p><div className="feature-strip"><div><strong>🍴</strong><span>Recipes</span></div><div><strong>🌿</strong><span>Ingredients</span></div><div><strong>♡</strong><span>Nutrition</span></div></div><div className="actions"><button onClick={login} className="primary-button" disabled={loginLoading}><span className="button-copy"><b>{loginLoading ? 'Opening your kitchen…' : 'Continue with MUVETH'}</b><small>Secure sign in</small></span>{!loginLoading && <span className="button-arrow">↗</span>}</button></div>{loginError && <p className="error-message">{loginError}</p>}<div className="trust-row"><span className="lock">✦</span><span>Secure authentication</span><span className="divider" /><span>Three Dimensions. One Life.</span></div></div><div className="login-visual" aria-hidden="true"><div className="visual-orb" /><div className="visual-ring" /><div className="logo-card"><div className="logo-fallback">MUVETH<br /><small>KITCHEN</small></div></div><div className="floating-card card-top"><span>01</span><strong>Recipes</strong><small>Cook with confidence</small></div><div className="floating-card card-bottom"><span>02</span><strong>Nutrition</strong><small>Understand your food</small></div></div></section>
+      <nav className="nav"><div className="brand-mark"><img src={mobileLogo} alt="MUVETH Kitchen" className="brand-logo" /><span className="brand-divider">/</span><span className="brand-health">HEALTH</span></div><span className="nav-caption">THREE DIMENSIONS. ONE LIFE.</span></nav>
+      <section className="hero"><div className="hero-copy"><div className="eyebrow">YOUR KITCHEN, REIMAGINED</div><h1>Eat well.<span>Live better.</span></h1><p>Create beautiful meals, understand what you eat, and make every recipe work for you.</p><div className="feature-strip"><div><strong>🍴</strong><span>Recipes</span></div><div><strong>🌿</strong><span>Ingredients</span></div><div><strong>♡</strong><span>Nutrition</span></div></div><div className="actions"><button onClick={login} className="primary-button" disabled={loginLoading}><span className="button-copy"><b>{loginLoading ? 'Opening your kitchen…' : 'Continue with MUVETH'}</b><small>Secure sign in</small></span>{!loginLoading && <span className="button-arrow">↗</span>}</button></div>{loginError && <p className="error-message">{loginError}</p>}<div className="trust-row"><span className="lock">✦</span><span>Secure authentication</span><span className="divider" /><span>Three Dimensions. One Life.</span></div></div><div className="login-visual" aria-hidden="true"><div className="visual-orb" /><div className="visual-ring" /><div className="logo-card"><img src={mobileLogo} alt="" className="login-logo-image" /></div><div className="floating-card card-top"><span>01</span><strong>Recipes</strong><small>Cook with confidence</small></div><div className="floating-card card-bottom"><span>02</span><strong>Nutrition</strong><small>Understand your food</small></div></div></section>
       <footer><span>© 2026 MUVETH KITCHEN</span><span>COOK. NOURISH. MOVE.</span></footer>
     </main>
   )
@@ -59,7 +61,7 @@ function LoginPage() {
 function AppLayout() {
   const navigate = useNavigate(); const [loggingOut, setLoggingOut] = useState(false)
   const logout = async () => { if (loggingOut) return; setLoggingOut(true); try { await keycloak.logout({ redirectUri: window.location.origin }) } catch (error) { console.error('Logout failed', error); setLoggingOut(false); toast.error('Unable to sign out right now.') } }
-  return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><span className="brand-dot" /><span>MUVETH</span><small>KITCHEN</small></button><nav className="sidebar-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>Cook. Nourish. Move.</h1></div><button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
+  return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><img src={mobileLogo} alt="MUVETH Kitchen" className="sidebar-logo" /><span className="sidebar-wordmark">MUVETH <small>KITCHEN</small></span></button><nav className="sidebar-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>Cook. Nourish. Move.</h1></div><button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
 }
 
 function ProtectedRoutes() { return keycloak.authenticated ? <AppLayout /> : <Navigate to="/" replace /> }
@@ -68,18 +70,8 @@ function AppRoutes() {
   return <Routes>
     <Route path="/" element={keycloak.authenticated ? <Navigate to="/recipes" replace /> : <LoginPage />} />
     <Route element={<ProtectedRoutes />}>
-      <Route path="/recipes" element={<RecipesPage />} />
-      <Route path="/routines" element={<RoutinePage />} />
-      <Route path="/cart" element={<CartPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/settings/appearance" element={<AppearanceSettingsPage />} />
-      <Route path="/settings/recipe-creation" element={<RecipeCreationSettingsPage />} />
-      <Route path="/settings/interactive-cooking" element={<InteractiveCookingSettingsPage />} />
-      <Route path="/settings/account" element={<AccountSettingsPage />} />
-      <Route path="/settings/security" element={<SecuritySettingsPage />} />
-      <Route path="/settings/about" element={<AboutSettingsPage />} />
-      <Route path="/settings/privacy" element={<PrivacyPolicyPage />} />
-      <Route path="/settings/terms" element={<TermsPage />} />
+      <Route path="/recipes" element={<RecipesPage />} /><Route path="/routines" element={<RoutinePage />} /><Route path="/cart" element={<CartPage />} /><Route path="/settings" element={<SettingsPage />} />
+      <Route path="/settings/appearance" element={<AppearanceSettingsPage />} /><Route path="/settings/recipe-creation" element={<RecipeCreationSettingsPage />} /><Route path="/settings/interactive-cooking" element={<InteractiveCookingSettingsPage />} /><Route path="/settings/account" element={<AccountSettingsPage />} /><Route path="/settings/security" element={<SecuritySettingsPage />} /><Route path="/settings/about" element={<AboutSettingsPage />} /><Route path="/settings/privacy" element={<PrivacyPolicyPage />} /><Route path="/settings/terms" element={<TermsPage />} />
     </Route>
     <Route path="*" element={<Navigate to={keycloak.authenticated ? '/recipes' : '/'} replace />} />
   </Routes>
