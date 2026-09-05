@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
@@ -19,9 +19,8 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: '●' },
 ]
 
-// The adapter is initialized only on an explicit login click or when the
-// browser returns from Keycloak with an OAuth callback. We intentionally do
-// not run an SSO check on the public login page.
+// The Keycloak instance is initialized only once per browser page.
+// The normal login page does not initialize Keycloak at all.
 let keycloakInitPromise: Promise<boolean> | null = null
 
 type KeycloakInitOptions = Parameters<typeof keycloak.init>[0]
@@ -31,6 +30,11 @@ function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
     keycloakInitPromise = keycloak.init(options)
   }
   return keycloakInitPromise
+}
+
+function hasKeycloakCallback() {
+  const params = new URLSearchParams(window.location.search)
+  return params.has('code') || params.has('state') || params.has('error')
 }
 
 function LoginPage() {
@@ -43,7 +47,7 @@ function LoginPage() {
     setLoginLoading(true)
 
     try {
-      // This is the only place that starts Keycloak from the public page.
+      // Keycloak is started only by this explicit user action.
       await initializeKeycloak()
       await keycloak.login({
         redirectUri: `${window.location.origin}/recipes`,
@@ -153,49 +157,33 @@ function AppRoutes() {
 
 function AuthBootstrap() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const initStarted = useRef(false)
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    // Keycloak can mutate the callback URL while processing the authorization
-    // response. The adapter must therefore finish initialization BEFORE the
-    // BrowserRouter is mounted. This makes the /recipes callback reliable.
-    const params = new URLSearchParams(window.location.search)
-    const hasAuthCallback = params.has('code') && params.has('state')
-    const hasAuthError = params.has('error')
-
-    if (!hasAuthCallback && !hasAuthError) {
+    // IMPORTANT: Keycloak's init() can mutate the URL. Therefore the OAuth
+    // callback must be processed before BrowserRouter is mounted.
+    // On a normal visit there is no callback and Keycloak is not initialized.
+    if (!hasKeycloakCallback()) {
       setStatus('ready')
-      return
-    }
-
-    if (initStarted.current) return
-    initStarted.current = true
-
-    if (hasAuthError) {
-      const description = params.get('error_description') || params.get('error') || 'Keycloak returned an authentication error.'
-      setErrorMessage(description)
-      setStatus('error')
       return
     }
 
     let cancelled = false
 
-    // check-sso is used ONLY for the OAuth callback. It is never executed on
-    // the normal public login page, so opening the app does not contact SSO.
-    initializeKeycloak({ ...keycloakConfig, onLoad: 'check-sso' }).then((authenticated) => {
+    initializeKeycloak().then((authenticated) => {
       if (cancelled) return
 
       if (!authenticated) {
-        throw new Error('Keycloak returned to the application without an authenticated session.')
+        throw new Error('Keycloak returned without an authenticated session.')
       }
 
-      // Remove the one-time authorization code before mounting the router.
-      window.history.replaceState({}, '', '/recipes')
+      // The authorization code/state are one-time values. Remove them before
+      // the router starts so the callback cannot be processed a second time.
+      window.history.replaceState({}, document.title, '/recipes')
       setStatus('ready')
     }).catch((error) => {
       if (cancelled) return
-      console.error('Keycloak callback initialization failed', error)
+      console.error('Keycloak callback processing failed', error)
       setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.')
       setStatus('error')
     })
@@ -220,8 +208,7 @@ function AuthBootstrap() {
     )
   }
 
-  // BrowserRouter is mounted only after any Keycloak callback has been
-  // processed. On the normal login page, no Keycloak initialization runs.
+  // The router is created only after Keycloak callback processing is complete.
   return <BrowserRouter><AppRoutes /></BrowserRouter>
 }
 
