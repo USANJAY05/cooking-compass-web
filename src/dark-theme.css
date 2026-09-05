@@ -19,6 +19,8 @@
 :root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder,:root[data-theme="black"] input::placeholder,:root[data-theme="black"] textarea::placeholder{color:#6b7280!important}
 :root[data-theme="dark"] .ring-black\/5,:root[data-theme="black"] .ring-black\/5{--tw-ring-color:rgba(255,255,255,.08)!important}
 :root[data-theme="dark"] .shadow-sm,:root[data-theme="black"] .shadow-sm{box-shadow:0 8px 28px rgba(0,0,0,.2)!important}
+:root[data-theme="dark"] .recipe-card:hover{background:#273244!important}
+:root[data-theme="black"] .recipe-card:hover{background:#171717!important}
 :root[data-theme="dark"] .nav-item:hover:not(.active),:root[data-theme="black"] .nav-item:hover:not(.active),:root[data-theme="dark"] .mobile-nav-item.active,:root[data-theme="black"] .mobile-nav-item.active{background:#183322!important}
 :root[data-theme="dark"] .nav-item,:root[data-theme="black"] .nav-item,:root[data-theme="dark"] .mobile-nav-item,:root[data-theme="black"] .mobile-nav-item{color:var(--theme-muted)!important}
 :root[data-theme="dark"] .nav-item.active,:root[data-theme="black"] .nav-item.active{background:#263b73!important;color:#fff!important}
