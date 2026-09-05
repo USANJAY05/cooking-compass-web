@@ -24,7 +24,9 @@ const nav = [
 // not run an SSO check on the public login page.
 let keycloakInitPromise: Promise<boolean> | null = null
 
-function initializeKeycloak(options: typeof keycloakConfig = keycloakConfig) {
+type KeycloakInitOptions = Parameters<typeof keycloak.init>[0]
+
+function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
   if (!keycloakInitPromise) {
     keycloakInitPromise = keycloak.init(options)
   }
@@ -157,7 +159,7 @@ function AuthBootstrap() {
   useEffect(() => {
     // Keycloak can mutate the callback URL while processing the authorization
     // response. The adapter must therefore finish initialization BEFORE the
-    // BrowserRouter is mounted. This also makes the /recipes callback reliable.
+    // BrowserRouter is mounted. This makes the /recipes callback reliable.
     const params = new URLSearchParams(window.location.search)
     const hasAuthCallback = params.has('code') && params.has('state')
     const hasAuthError = params.has('error')
@@ -218,8 +220,8 @@ function AuthBootstrap() {
     )
   }
 
-  // Important: BrowserRouter is mounted only after any Keycloak callback has
-  // been processed. On the normal login page, no Keycloak initialization runs.
+  // BrowserRouter is mounted only after any Keycloak callback has been
+  // processed. On the normal login page, no Keycloak initialization runs.
   return <BrowserRouter><AppRoutes /></BrowserRouter>
 }
 
