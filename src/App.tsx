@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
@@ -20,13 +20,8 @@ const nav = [
 ]
 
 function LoginPage() {
-  const navigate = useNavigate()
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
-
-  useEffect(() => {
-    if (keycloak.authenticated) navigate('/recipes', { replace: true })
-  }, [navigate])
 
   const login = async () => {
     if (loginLoading) return
@@ -114,17 +109,27 @@ function ProtectedRoutes() { return keycloak.authenticated ? <AppLayout /> : <Na
 
 function AuthBootstrap() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const initStarted = useRef(false)
+
   useEffect(() => {
-    let mounted = true
+    if (initStarted.current) return
+    initStarted.current = true
+
+    let cancelled = false
+
     keycloak.init(keycloakConfig).then((authenticated) => {
-      if (!mounted) return
+      if (cancelled) return
       setStatus('ready')
-      if (authenticated && window.location.pathname === '/') window.history.replaceState({}, '', '/recipes')
+      if (authenticated && window.location.pathname === '/') {
+        window.history.replaceState({}, '', '/recipes')
+      }
     }).catch((error) => {
+      if (cancelled) return
       console.error('Keycloak initialization failed', error)
-      if (mounted) setStatus('error')
+      setStatus('error')
     })
-    return () => { mounted = false }
+
+    return () => { cancelled = true }
   }, [])
 
   if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Preparing MUVETH Kitchen…</p></div></div>
