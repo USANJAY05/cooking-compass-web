@@ -1,20 +1,176 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import toast from 'react-hot-toast'
 
-type Recipe = { id?: number; title?: string; name?: string; description?: string; image_url?: string; prep_time?: number; cook_time?: number; category?: { name?: string } | string }
+type Recipe = {
+  id?: number
+  title?: string
+  name?: string
+  description?: string
+  image_url?: string
+  prep_time?: number
+  cook_time?: number
+  category?: { name?: string } | string
+}
+
+type RecipeView = 'explore' | 'mine'
 
 export function RecipesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const query = useQuery({ queryKey: ['recipes', search], queryFn: async () => (search ? api.recipes.search(search) : api.recipes.list()).then(r => r.data) })
-  const recipes: Recipe[] = Array.isArray(query.data) ? query.data : query.data?.items || query.data?.data || []
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
-  return <div className="mx-auto max-w-7xl">
-    <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><p className="mb-2 text-xs font-bold tracking-[.25em] text-sage">DISCOVER</p><h1 className="font-display text-4xl md:text-5xl">Recipes for your kitchen.</h1><p className="mt-2 text-slate-500">Find something worth cooking today.</p></div><div className="relative w-full md:w-80"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipes..." className="w-full rounded-2xl border border-black/10 bg-white px-5 py-3.5 text-sm outline-none ring-moss/20 focus:ring-4" /></div></div>
-    {query.isLoading && <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[1,2,3].map(i => <div key={i} className="h-72 animate-pulse rounded-3xl bg-white" />)}</div>}
-    {query.isError && <div className="rounded-3xl bg-white p-8 text-center"><p className="font-semibold">Could not load recipes.</p><p className="mt-2 text-sm text-slate-500">Check your API URL and authentication.</p><button onClick={() => query.refetch()} className="mt-5 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white">Try again</button></div>}
-    {!query.isLoading && !query.isError && recipes.length === 0 && <div className="rounded-3xl border border-dashed border-black/10 bg-white/60 p-14 text-center"><div className="text-4xl">🍲</div><h2 className="mt-4 font-display text-2xl">No recipes yet</h2><p className="mt-2 text-sm text-slate-500">Your recipe collection will appear here.</p></div>}
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{recipes.map((recipe, index) => <article key={recipe.id ?? index} className="group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-1 hover:shadow-xl"><div className="flex h-48 items-center justify-center overflow-hidden bg-[#e8e4d8]">{recipe.image_url ? <img src={recipe.image_url} alt={recipe.title || recipe.name || 'Recipe'} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <span className="text-6xl">🥗</span>}</div><div className="p-5"><div className="flex items-center justify-between"><span className="rounded-full bg-[#edf1e9] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-moss">{typeof recipe.category === 'string' ? recipe.category : recipe.category?.name || 'Recipe'}</span>{recipe.prep_time && <span className="text-xs text-slate-400">{recipe.prep_time} min</span>}</div><h2 className="mt-4 font-display text-2xl">{recipe.title || recipe.name || 'Untitled recipe'}</h2><p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{recipe.description || 'A recipe ready for your kitchen.'}</p><button onClick={() => toast('Recipe details coming next.')} className="mt-5 text-sm font-bold text-moss">View recipe →</button></div></article>)}</div>
-  </div>
+  const view: RecipeView = searchParams.get('view') === 'mine' ? 'mine' : 'explore'
+  const scope = view === 'mine' ? 'mine' : 'public'
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 400)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const query = useQuery({
+    queryKey: ['recipes', scope, debouncedSearch],
+    queryFn: async () => {
+      const response = debouncedSearch
+        ? await api.recipes.search(debouncedSearch, { scope })
+        : await api.recipes.list({ scope })
+      return response.data
+    },
+  })
+
+  const recipes: Recipe[] = useMemo(() => {
+    const data = query.data
+    if (Array.isArray(data)) return data
+    return data?.items || data?.data || []
+  }, [query.data])
+
+  const switchView = (nextView: RecipeView) => {
+    setSearch('')
+    setDebouncedSearch('')
+    setSearchParams(nextView === 'mine' ? { view: 'mine' } : {})
+  }
+
+  const recipeName = (recipe: Recipe) => recipe.title || recipe.name || 'Untitled recipe'
+  const categoryName = (recipe: Recipe) => typeof recipe.category === 'string' ? recipe.category : recipe.category?.name || 'Recipe'
+
+  return (
+    <div className="mx-auto w-full max-w-7xl">
+      <section className="mb-6">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#15803D]">RECIPES</p>
+            <h2 className="font-display text-3xl font-bold tracking-tight text-[#132238] md:text-4xl">
+              {view === 'mine' ? 'My Recipes' : 'Explore'}
+            </h2>
+            <p className="mt-1 text-sm text-[#52606D]">
+              {view === 'mine' ? 'Your recipes, ready whenever you are.' : 'Discover recipes worth cooking today.'}
+            </p>
+          </div>
+
+          <div className="flex w-full max-w-md rounded-2xl border border-[#DCE5DE] bg-white p-1 shadow-sm sm:w-auto">
+            <button
+              type="button"
+              onClick={() => switchView('explore')}
+              className={`flex-1 rounded-xl px-5 py-2.5 text-sm font-extrabold transition sm:min-w-[120px] ${view === 'explore' ? 'bg-[#172554] text-white shadow-sm' : 'text-[#52606D] hover:bg-[#EEF7F0]'}`}
+            >
+              Explore
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView('mine')}
+              className={`flex-1 rounded-xl px-5 py-2.5 text-sm font-extrabold transition sm:min-w-[120px] ${view === 'mine' ? 'bg-[#172554] text-white shadow-sm' : 'text-[#52606D] hover:bg-[#EEF7F0]'}`}
+            >
+              My Recipes
+            </button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={view === 'mine' ? 'Search your recipes...' : 'Search public recipes...'}
+            className="w-full rounded-2xl border border-[#DCE5DE] bg-white px-5 py-3.5 text-sm font-medium text-[#132238] shadow-sm outline-none transition placeholder:text-[#7A8694] focus:border-[#22C55E] focus:ring-4 focus:ring-[#22C55E]/10"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setDebouncedSearch('') }}
+              className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-[#7A8694] hover:bg-[#EEF7F0] hover:text-[#132238]"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </section>
+
+      {query.isLoading && (
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div key={item} className="flex min-h-[132px] animate-pulse gap-4 rounded-2xl border border-[#DCE5DE] bg-white p-3">
+              <div className="h-[106px] w-[106px] shrink-0 rounded-xl bg-[#E8EDE8]" />
+              <div className="flex flex-1 flex-col justify-center gap-3">
+                <div className="h-4 w-3/5 rounded bg-[#E8EDE8]" />
+                <div className="h-2.5 w-2/5 rounded bg-[#E8EDE8]" />
+                <div className="h-2.5 w-4/5 rounded bg-[#E8EDE8]" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {query.isError && (
+        <div className="rounded-3xl border border-[#DCE5DE] bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-xl">!</div>
+          <h3 className="mt-4 text-lg font-extrabold text-[#132238]">Failed to load recipes</h3>
+          <button onClick={() => query.refetch()} className="mt-5 rounded-xl bg-[#172554] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#1e2f68]">Retry</button>
+        </div>
+      )}
+
+      {!query.isLoading && !query.isError && recipes.length === 0 && (
+        <div className="rounded-3xl border border-dashed border-[#DCE5DE] bg-white/70 p-14 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#EEF7F0] text-2xl">📖</div>
+          <h3 className="mt-5 font-display text-2xl font-bold text-[#132238]">
+            {debouncedSearch ? 'No recipes match your search' : view === 'mine' ? "You haven't created any recipes yet" : 'No recipes available in the feed'}
+          </h3>
+          {!debouncedSearch && view === 'mine' && (
+            <button onClick={() => toast('Create Recipe')} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#172554] px-5 py-2.5 text-sm font-bold text-white">
+              <span className="text-lg leading-none">+</span>
+              Create First Recipe
+            </button>
+          )}
+        </div>
+      )}
+
+      {!query.isLoading && !query.isError && recipes.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {recipes.map((recipe, index) => (
+            <article key={recipe.id ?? index} className="group overflow-hidden rounded-2xl border border-[#DCE5DE] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+              <div className="flex min-h-[136px] gap-4 p-3">
+                <div className="h-[112px] w-[112px] shrink-0 overflow-hidden rounded-xl bg-[#E8EDE8]">
+                  {recipe.image_url ? (
+                    <img src={recipe.image_url} alt={recipeName(recipe)} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-4xl">🥗</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 py-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-lg bg-[#EEF7F0] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-[#15803D]">{categoryName(recipe)}</span>
+                    {recipe.prep_time ? <span className="shrink-0 text-[10px] font-semibold text-[#7A8694]">{recipe.prep_time} min</span> : null}
+                  </div>
+                  <h3 className="mt-2 line-clamp-1 text-base font-extrabold text-[#132238]">{recipeName(recipe)}</h3>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#52606D]">{recipe.description || 'A recipe ready for your kitchen.'}</p>
+                  <button onClick={() => toast('Recipe details coming next.')} className="mt-2 text-xs font-extrabold text-[#15803D] hover:text-[#172554]">View recipe →</button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
