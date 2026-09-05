@@ -36,12 +36,13 @@ export const keycloak = new Keycloak({
   clientId,
 })
 
-// Keep Keycloak initialization passive. The login page must not perform an
-// automatic SSO check. The Login button explicitly initializes Keycloak and
-// then starts the authorization redirect. If Keycloak redirects back with a
-// code/state callback, the same initialization processes that callback.
+// Do not perform an automatic SSO check on the public login page.
+// The login button explicitly initializes Keycloak before starting login.
+// Query response mode makes the OAuth callback explicit and easy to process
+// before the React router is mounted.
 export const keycloakConfig = {
   pkceMethod: 'S256' as const,
+  responseMode: 'query' as const,
   checkLoginIframe: false,
   scope: 'openid profile email',
 }
