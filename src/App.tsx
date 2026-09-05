@@ -25,17 +25,17 @@ const mobileLogo = 'https://raw.githubusercontent.com/USANJAY05/cooking_compass_
 let keycloakInitPromise: Promise<boolean> | null = null
 type KeycloakInitOptions = Parameters<typeof keycloak.init>[0]
 function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
-  if (!keycloakInitPromise) keycloakInitPromise = keycloak.init(options)
+  if (!keycloakInitPromise) {
+    keycloakInitPromise = keycloak.init(options)
+  }
   return keycloakInitPromise
 }
 
-// Only an authorization code or an explicit OAuth error means this is an
-// authentication callback. Keycloak logout redirects can contain `state`
-// without an authorization code; treating that as a login callback causes
-// the app to incorrectly show "without an authenticated session" after logout.
+// Only an authorization code is an authentication callback. Logout redirects
+// must never be sent through the login callback handler.
 function hasKeycloakCallback() {
   const params = new URLSearchParams(window.location.search)
-  return params.has('code') || params.has('error')
+  return params.has('code')
 }
 
 function LoginPage() {
@@ -44,9 +44,6 @@ function LoginPage() {
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
 
-  // If the user manually opens the login URL while already signed in,
-  // check the existing Keycloak session and take them straight home.
-  // check-sso does not start a login redirect for unauthenticated users.
   useEffect(() => {
     let cancelled = false
 
@@ -71,7 +68,8 @@ function LoginPage() {
 
   const login = async () => {
     if (loginLoading || checkingSession) return
-    setLoginError(''); setLoginLoading(true)
+    setLoginError('')
+    setLoginLoading(true)
     try {
       await initializeKeycloak()
       await keycloak.login({ redirectUri: `${window.location.origin}/recipes`, scope: 'openid profile email' })
@@ -97,8 +95,26 @@ function LoginPage() {
 }
 
 function AppLayout() {
-  const navigate = useNavigate(); const [loggingOut, setLoggingOut] = useState(false)
-  const logout = async () => { if (loggingOut) return; setLoggingOut(true); try { await keycloak.logout({ redirectUri: window.location.origin }) } catch (error) { console.error('Logout failed', error); setLoggingOut(false); toast.error('Unable to sign out right now.') } }
+  const navigate = useNavigate()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  // App sign-out clears the local Keycloak tokens but deliberately keeps the
+  // browser's Keycloak SSO session. Opening the login page again will run
+  // check-sso and, when that SSO session still exists, return to Recipes.
+  const logout = async () => {
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      keycloak.clearToken()
+      queryClient.clear()
+      window.location.replace('/')
+    } catch (error) {
+      console.error('App logout failed', error)
+      setLoggingOut(false)
+      toast.error('Unable to sign out right now.')
+    }
+  }
+
   return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><img src={mobileLogo} alt="MUVETH Kitchen" className="sidebar-logo" /><span className="sidebar-wordmark">MUVETH <small>KITCHEN</small></span></button><nav className="sidebar-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>Cook. Nourish. Move.</h1></div><button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
 }
 
@@ -116,15 +132,37 @@ function AppRoutes() {
 }
 
 function AuthBootstrap() {
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading'); const [errorMessage, setErrorMessage] = useState('')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [errorMessage, setErrorMessage] = useState('')
+
   useEffect(() => {
-    if (!hasKeycloakCallback()) { setStatus('ready'); return }
+    if (!hasKeycloakCallback()) {
+      setStatus('ready')
+      return
+    }
+
     let cancelled = false
-    initializeKeycloak().then((authenticated) => { if (cancelled) return; if (!authenticated) throw new Error('Keycloak returned without an authenticated session.'); window.history.replaceState({}, document.title, '/recipes'); setStatus('ready') }).catch((error) => { if (cancelled) return; console.error('Keycloak callback processing failed', error); setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.'); setStatus('error') })
+    initializeKeycloak()
+      .then((authenticated) => {
+        if (cancelled) return
+        if (!authenticated) {
+          throw new Error('Keycloak returned without an authenticated session.')
+        }
+        window.history.replaceState({}, document.title, '/recipes')
+        setStatus('ready')
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('Keycloak callback processing failed', error)
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.')
+        setStatus('error')
+      })
+
     return () => { cancelled = true }
   }, [])
+
   if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Signing you in…</p></div></div>
-  if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not complete.</h1><p>{errorMessage || 'Check the Keycloak URL, realm, client ID, and redirect URI configuration.'}</p><button onClick={() => window.location.replace('/')}>Back to login</button></div></div>
+  if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not complete.</h1><p>{errorMessage || 'Check the Keycloak URL, realm, client ID, and redirect URI configuration.'}</p><button onClick={() => window.location.assign('/')}>Back to login</button></div></div>
   return <BrowserRouter><AppRoutes /></BrowserRouter>
 }
 
