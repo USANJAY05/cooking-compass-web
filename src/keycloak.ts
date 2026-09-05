@@ -2,13 +2,10 @@ import Keycloak from 'keycloak-js'
 
 const rawUrl = import.meta.env.VITE_KEYCLOAK_URL?.trim() || ''
 const configuredRealm = import.meta.env.VITE_KEYCLOAK_REALM?.trim() || ''
-const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID?.trim() || 'cooking-compass-mobile'
+const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID?.trim() || 'cooking_compass_web'
 
 function normalizeKeycloakUrl(value: string, realmValue: string) {
-  // The web app uses the cooking-compass realm by default so an omitted
-  // VITE_KEYCLOAK_REALM cannot silently point the browser at a different
-  // realm such as /realms/dev.
-  const defaultRealm = 'cooking-compass'
+  const defaultRealm = 'dev'
 
   if (!value) {
     return { baseUrl: 'http://localhost:8080', realm: realmValue || defaultRealm }
@@ -30,7 +27,7 @@ function normalizeKeycloakUrl(value: string, realmValue: string) {
 const { baseUrl, realm } = normalizeKeycloakUrl(rawUrl, configuredRealm)
 
 if (!rawUrl) {
-  console.warn('VITE_KEYCLOAK_URL is not configured. Using http://localhost:8080 and realm cooking-compass for local development.')
+  console.warn('VITE_KEYCLOAK_URL is not configured. Using http://localhost:8080 and realm dev for local development.')
 }
 
 export const keycloak = new Keycloak({
@@ -39,11 +36,13 @@ export const keycloak = new Keycloak({
   clientId,
 })
 
+// Keep Keycloak initialization passive. The login page must not perform an
+// automatic SSO check. The Login button explicitly initializes Keycloak and
+// then starts the authorization redirect. If Keycloak redirects back with a
+// code/state callback, the same initialization processes that callback.
 export const keycloakConfig = {
-  onLoad: 'check-sso' as const,
   pkceMethod: 'S256' as const,
   checkLoginIframe: false,
-  silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
   scope: 'openid profile email',
 }
 
