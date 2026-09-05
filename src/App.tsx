@@ -28,9 +28,14 @@ function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
   if (!keycloakInitPromise) keycloakInitPromise = keycloak.init(options)
   return keycloakInitPromise
 }
+
+// Only an authorization code or an explicit OAuth error means this is an
+// authentication callback. Keycloak logout redirects can contain `state`
+// without an authorization code; treating that as a login callback causes
+// the app to incorrectly show "without an authenticated session" after logout.
 function hasKeycloakCallback() {
   const params = new URLSearchParams(window.location.search)
-  return params.has('code') || params.has('state') || params.has('error')
+  return params.has('code') || params.has('error')
 }
 
 function LoginPage() {
