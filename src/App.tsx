@@ -34,10 +34,38 @@ function hasKeycloakCallback() {
 }
 
 function LoginPage() {
+  const navigate = useNavigate()
+  const [checkingSession, setCheckingSession] = useState(true)
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
+
+  // If the user manually opens the login URL while already signed in,
+  // check the existing Keycloak session and take them straight home.
+  // check-sso does not start a login redirect for unauthenticated users.
+  useEffect(() => {
+    let cancelled = false
+
+    initializeKeycloak()
+      .then((authenticated) => {
+        if (cancelled) return
+        if (authenticated || keycloak.authenticated) {
+          navigate('/recipes', { replace: true })
+          return
+        }
+        setCheckingSession(false)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('Keycloak session check failed', error)
+        setCheckingSession(false)
+        setLoginError(error instanceof Error ? error.message : 'Unable to check your secure session.')
+      })
+
+    return () => { cancelled = true }
+  }, [navigate])
+
   const login = async () => {
-    if (loginLoading) return
+    if (loginLoading || checkingSession) return
     setLoginError(''); setLoginLoading(true)
     try {
       await initializeKeycloak()
@@ -48,6 +76,11 @@ function LoginPage() {
       setLoginError(error instanceof Error ? error.message : 'Unable to start secure sign-in.')
     }
   }
+
+  if (checkingSession) {
+    return <div className="app-state"><div><div className="state-dot" /><p>Checking your session…</p></div></div>
+  }
+
   return (
     <main className="page-shell">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
