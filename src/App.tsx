@@ -4,181 +4,39 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
 import { keycloak, keycloakConfig } from './keycloak'
 import { RecipesPage } from './pages/RecipesPage'
+import { RecipeDetailPage } from './pages/RecipeDetailPage'
 import { RoutinePage } from './pages/RoutinePage'
+import { RoutineDetailPage } from './pages/RoutineDetailPage'
 import { CartPage } from './pages/CartPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AboutSettingsPage, AccountSettingsPage, AppearanceSettingsPage, InteractiveCookingSettingsPage, PrivacyPolicyPage, RecipeCreationSettingsPage, SecuritySettingsPage, TermsPage } from './pages/SettingsNestedPages'
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, staleTime: 5 * 60_000, refetchOnWindowFocus: false } },
-})
-
-const nav = [
-  { to: '/recipes', label: 'Recipes', icon: '🍴' },
-  { to: '/routines', label: 'Routine', icon: '▣' },
-  { to: '/cart', label: 'Cart', icon: '🛒' },
-  { to: '/settings', label: 'Settings', icon: '●' },
-]
-
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 5 * 60_000, refetchOnWindowFocus: false } } })
+const nav = [{ to: '/recipes', label: 'Recipes', icon: '🍴' }, { to: '/routines', label: 'Routine', icon: '▣' }, { to: '/cart', label: 'Cart', icon: '🛒' }, { to: '/settings', label: 'Settings', icon: '●' }]
 const mobileLogo = 'https://raw.githubusercontent.com/USANJAY05/cooking_compass_mobile/main/assets/icon.png'
-
 let keycloakInitPromise: Promise<boolean> | null = null
 type KeycloakInitOptions = Parameters<typeof keycloak.init>[0]
-function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) {
-  if (!keycloakInitPromise) {
-    keycloakInitPromise = keycloak.init(options)
-  }
-  return keycloakInitPromise
-}
-
-function hasKeycloakCallback() {
-  const params = new URLSearchParams(window.location.search)
-  return params.has('code')
-}
+function initializeKeycloak(options: KeycloakInitOptions = keycloakConfig) { if (!keycloakInitPromise) keycloakInitPromise = keycloak.init(options); return keycloakInitPromise }
+function hasKeycloakCallback() { return new URLSearchParams(window.location.search).has('code') }
 
 function LoginPage() {
-  const navigate = useNavigate()
-  const [checkingSession, setCheckingSession] = useState(true)
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [loginError, setLoginError] = useState('')
-
-  useEffect(() => {
-    let cancelled = false
-    initializeKeycloak()
-      .then((authenticated) => {
-        if (cancelled) return
-        if (authenticated || keycloak.authenticated) {
-          navigate('/recipes', { replace: true })
-          return
-        }
-        setCheckingSession(false)
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error('Keycloak session check failed', error)
-        setCheckingSession(false)
-        setLoginError(error instanceof Error ? error.message : 'Unable to check your secure session.')
-      })
-    return () => { cancelled = true }
-  }, [navigate])
-
-  const login = async () => {
-    if (loginLoading || checkingSession) return
-    setLoginError('')
-    setLoginLoading(true)
-    try {
-      await initializeKeycloak()
-      await keycloak.login({ redirectUri: `${window.location.origin}/recipes`, scope: 'openid profile email' })
-    } catch (error) {
-      console.error('Keycloak login failed', error)
-      setLoginLoading(false)
-      setLoginError(error instanceof Error ? error.message : 'Unable to start secure sign-in.')
-    }
-  }
-
+  const navigate = useNavigate(); const [checkingSession, setCheckingSession] = useState(true); const [loginLoading, setLoginLoading] = useState(false); const [loginError, setLoginError] = useState('')
+  useEffect(() => { let cancelled = false; initializeKeycloak().then(authenticated => { if (cancelled) return; if (authenticated || keycloak.authenticated) navigate('/recipes', { replace: true }); else setCheckingSession(false) }).catch(error => { if (cancelled) return; console.error('Keycloak session check failed', error); setCheckingSession(false); setLoginError(error instanceof Error ? error.message : 'Unable to check your secure session.') }); return () => { cancelled = true } }, [navigate])
+  const login = async () => { if (loginLoading || checkingSession) return; setLoginError(''); setLoginLoading(true); try { await initializeKeycloak(); await keycloak.login({ redirectUri: `${window.location.origin}/recipes`, scope: 'openid profile email' }) } catch (error) { console.error('Keycloak login failed', error); setLoginLoading(false); setLoginError(error instanceof Error ? error.message : 'Unable to start secure sign-in.') } }
   if (checkingSession) return <div className="app-state"><div><div className="state-dot" /><p>Checking your session…</p></div></div>
-
-  return (
-    <main className="page-shell">
-      <div className="ambient ambient-one" /><div className="ambient ambient-two" />
-      <nav className="nav"><div className="brand-mark"><img src={mobileLogo} alt="MUVETH Kitchen" className="brand-logo" /><span className="brand-divider">/</span><span className="brand-health">HEALTH</span></div><span className="nav-caption">THREE DIMENSIONS. ONE LIFE.</span></nav>
-      <section className="hero"><div className="hero-copy"><div className="eyebrow">YOUR KITCHEN, REIMAGINED</div><h1>Eat well.<span>Live better.</span></h1><p>Create beautiful meals, understand what you eat, and make every recipe work for you.</p><div className="feature-strip"><div><strong>🍴</strong><span>Recipes</span></div><div><strong>🌿</strong><span>Ingredients</span></div><div><strong>♡</strong><span>Nutrition</span></div></div><div className="actions"><button onClick={login} className="primary-button" disabled={loginLoading}><span className="button-copy"><b>{loginLoading ? 'Opening your kitchen…' : 'Continue with MUVETH'}</b><small>Secure sign in</small></span>{!loginLoading && <span className="button-arrow">↗</span>}</button></div>{loginError && <p className="error-message">{loginError}</p>}<div className="trust-row"><span className="lock">✦</span><span>Secure authentication</span><span className="divider" /><span>Three Dimensions. One Life.</span></div></div><div className="login-visual" aria-hidden="true"><div className="visual-orb" /><div className="visual-ring" /><div className="logo-card"><img src={mobileLogo} alt="" className="login-logo-image" /></div><div className="floating-card card-top"><span>01</span><strong>Recipes</strong><small>Cook with confidence</small></div><div className="floating-card card-bottom"><span>02</span><strong>Nutrition</strong><small>Understand your food</small></div></div></section>
-      <footer><span>© 2026 MUVETH KITCHEN</span><span>COOK. NOURISH. MOVE.</span></footer>
-    </main>
-  )
+  return <main className="page-shell"><div className="ambient ambient-one" /><div className="ambient ambient-two" /><nav className="nav"><div className="brand-mark"><img src={mobileLogo} alt="MUVETH Kitchen" className="brand-logo" /><span className="brand-divider">/</span><span className="brand-health">HEALTH</span></div><span className="nav-caption">THREE DIMENSIONS. ONE LIFE.</span></nav><section className="hero"><div className="hero-copy"><div className="eyebrow">YOUR KITCHEN, REIMAGINED</div><h1>Eat well.<span>Live better.</span></h1><p>Create beautiful meals, understand what you eat, and make every recipe work for you.</p><div className="feature-strip"><div><strong>🍴</strong><span>Recipes</span></div><div><strong>🌿</strong><span>Ingredients</span></div><div><strong>♡</strong><span>Nutrition</span></div></div><div className="actions"><button onClick={login} className="primary-button" disabled={loginLoading}><span className="button-copy"><b>{loginLoading ? 'Opening your kitchen…' : 'Continue with MUVETH'}</b><small>Secure sign in</small></span>{!loginLoading && <span className="button-arrow">↗</span>}</button></div>{loginError && <p className="error-message">{loginError}</p>}<div className="trust-row"><span className="lock">✦</span><span>Secure authentication</span><span className="divider" /><span>Three Dimensions. One Life.</span></div></div><div className="login-visual" aria-hidden="true"><div className="visual-orb" /><div className="visual-ring" /><div className="logo-card"><img src={mobileLogo} alt="" className="login-logo-image" /></div><div className="floating-card card-top"><span>01</span><strong>Recipes</strong><small>Cook with confidence</small></div><div className="floating-card card-bottom"><span>02</span><strong>Nutrition</strong><small>Understand your food</small></div></div></section><footer><span>© 2026 MUVETH KITCHEN</span><span>COOK. NOURISH. MOVE.</span></footer></main>
 }
 
-const pageTitles: Record<string, string> = {
-  '/recipes': 'Recipes',
-  '/routines': 'Routine',
-  '/cart': 'Cart',
-  '/settings': 'Settings',
-  '/settings/appearance': 'Appearance',
-  '/settings/recipe-creation': 'Recipe Creation',
-  '/settings/interactive-cooking': 'Interactive Cooking',
-  '/settings/account': 'Account Information',
-  '/settings/security': 'Security',
-  '/settings/about': 'About',
-  '/settings/privacy': 'Privacy Policy',
-  '/settings/terms': 'Terms of Service',
-}
+const pageTitles: Record<string, string> = {'/recipes':'Recipes','/routines':'Routine','/cart':'Cart','/settings':'Settings','/settings/appearance':'Appearance','/settings/recipe-creation':'Recipe Creation','/settings/interactive-cooking':'Interactive Cooking','/settings/account':'Account Information','/settings/security':'Security','/settings/about':'About','/settings/privacy':'Privacy Policy','/settings/terms':'Terms of Service','/recipes/':'Recipe Details','/routines/':'Routine Details'}
+function getPageTitle(pathname: string) { if (pageTitles[pathname]) return pageTitles[pathname]; if (/^\/recipes\/\d+$/.test(pathname)) return 'Recipe Details'; if (/^\/routines\/\d+$/.test(pathname)) return 'Routine Details'; return 'MUVETH Kitchen' }
 
 function AppLayout() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [loggingOut, setLoggingOut] = useState(false)
-  const pageTitle = pageTitles[location.pathname] ?? 'MUVETH Kitchen'
-  const isRecipes = location.pathname === '/recipes'
-  const isRoutine = location.pathname === '/routines'
-  const showPlus = isRecipes || isRoutine
-
-  const logout = async () => {
-    if (loggingOut) return
-    setLoggingOut(true)
-    try {
-      keycloak.clearToken()
-      queryClient.clear()
-      window.location.replace('/')
-    } catch (error) {
-      console.error('App logout failed', error)
-      setLoggingOut(false)
-      toast.error('Unable to sign out right now.')
-    }
-  }
-
-  const handleHeaderAction = () => {
-    if (isRecipes) {
-      toast('Create Recipe', { icon: '+' })
-      return
-    }
-    if (isRoutine) toast('Create Routine', { icon: '+' })
-  }
-
-  return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><img src={mobileLogo} alt="MUVETH Kitchen" className="sidebar-logo" /><span className="sidebar-wordmark">MUVETH <small>KITCHEN</small></span></button><nav className="sidebar-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>{pageTitle}</h1></div><div className="header-actions">{showPlus ? <button className="grid h-10 w-10 place-items-center rounded-full border border-[#DCE5DE] bg-white text-2xl font-light leading-none text-[#172554] shadow-sm transition hover:border-[#22C55E] hover:bg-[#EEF7F0]" onClick={handleHeaderAction} aria-label={isRecipes ? 'Create recipe' : 'Create routine'} title={isRecipes ? 'Create recipe' : 'Create routine'}>+</button> : <button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button>}</div></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
+  const navigate = useNavigate(); const location = useLocation(); const [loggingOut, setLoggingOut] = useState(false); const pageTitle = getPageTitle(location.pathname); const isRecipes = location.pathname === '/recipes'; const isRoutine = location.pathname === '/routines'; const showPlus = isRecipes || isRoutine
+  const logout = async () => { if (loggingOut) return; setLoggingOut(true); try { keycloak.clearToken(); queryClient.clear(); window.location.replace('/') } catch (error) { console.error('App logout failed', error); setLoggingOut(false); toast.error('Unable to sign out right now.') } }
+  const handleHeaderAction = () => { if (isRecipes) toast('Create Recipe', { icon: '+' }); if (isRoutine) toast('Create Routine', { icon: '+' }) }
+  return <div className="app-shell"><aside className="sidebar"><button onClick={() => navigate('/recipes')} className="sidebar-brand"><img src={mobileLogo} alt="MUVETH Kitchen" className="sidebar-logo" /><span className="sidebar-wordmark">MUVETH <small>KITCHEN</small></span></button><nav className="sidebar-nav">{nav.map(item => <NavLink key={item.to} to={item.to} className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button></aside><div className="content-shell"><header className="app-header"><div><p>MUVETH KITCHEN</p><h1>{pageTitle}</h1></div><div className="header-actions">{showPlus ? <button className="grid h-10 w-10 place-items-center rounded-full border border-[#DCE5DE] bg-white text-2xl font-light leading-none text-[#172554] shadow-sm transition hover:border-[#22C55E] hover:bg-[#EEF7F0]" onClick={handleHeaderAction} aria-label={isRecipes ? 'Create recipe' : 'Create routine'}>+</button> : <button className="mobile-logout" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Sign out'}</button>}</div></header><main className="app-content"><Outlet /></main><nav className="mobile-nav">{nav.map(item => <NavLink key={item.to} to={item.to} className={({isActive}) => `mobile-nav-item ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav></div></div>
 }
-
 function ProtectedRoutes() { return keycloak.authenticated ? <AppLayout /> : <Navigate to="/" replace /> }
-
-function AppRoutes() {
-  return <Routes>
-    <Route path="/" element={keycloak.authenticated ? <Navigate to="/recipes" replace /> : <LoginPage />} />
-    <Route element={<ProtectedRoutes />}>
-      <Route path="/recipes" element={<RecipesPage />} /><Route path="/routines" element={<RoutinePage />} /><Route path="/cart" element={<CartPage />} /><Route path="/settings" element={<SettingsPage />} />
-      <Route path="/settings/appearance" element={<AppearanceSettingsPage />} /><Route path="/settings/recipe-creation" element={<RecipeCreationSettingsPage />} /><Route path="/settings/interactive-cooking" element={<InteractiveCookingSettingsPage />} /><Route path="/settings/account" element={<AccountSettingsPage />} /><Route path="/settings/security" element={<SecuritySettingsPage />} /><Route path="/settings/about" element={<AboutSettingsPage />} /><Route path="/settings/privacy" element={<PrivacyPolicyPage />} /><Route path="/settings/terms" element={<TermsPage />} />
-    </Route>
-    <Route path="*" element={<Navigate to={keycloak.authenticated ? '/recipes' : '/'} replace />} />
-  </Routes>
-}
-
-function AuthBootstrap() {
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [errorMessage, setErrorMessage] = useState('')
-
-  useEffect(() => {
-    if (!hasKeycloakCallback()) {
-      setStatus('ready')
-      return
-    }
-    let cancelled = false
-    initializeKeycloak()
-      .then((authenticated) => {
-        if (cancelled) return
-        if (!authenticated) throw new Error('Keycloak returned without an authenticated session.')
-        window.history.replaceState({}, document.title, '/recipes')
-        setStatus('ready')
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error('Keycloak callback processing failed', error)
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.')
-        setStatus('error')
-      })
-    return () => { cancelled = true }
-  }, [])
-
-  if (status === 'loading') return <div className="app-state"><div><div className="state-dot" /><p>Signing you in…</p></div></div>
-  if (status === 'error') return <div className="app-state"><div className="state-card"><div className="state-dot error" /><h1>Secure sign-in could not complete.</h1><p>{errorMessage || 'Check the Keycloak URL, realm, client ID, and redirect URI configuration.'}</p><button onClick={() => window.location.assign('/')}>Back to login</button></div></div>
-  return <BrowserRouter><AppRoutes /></BrowserRouter>
-}
-
-export default function App() { return <QueryClientProvider client={queryClient}><AuthBootstrap /><Toaster position="top-right" toastOptions={{ duration: 3000 }} /></QueryClientProvider> }
+function AppRoutes() { return <Routes><Route path="/" element={keycloak.authenticated ? <Navigate to="/recipes" replace /> : <LoginPage />} /><Route element={<ProtectedRoutes />}><Route path="/recipes" element={<RecipesPage />} /><Route path="/recipes/:recipeId" element={<RecipeDetailPage />} /><Route path="/routines" element={<RoutinePage />} /><Route path="/routines/:routineId" element={<RoutineDetailPage />} /><Route path="/cart" element={<CartPage />} /><Route path="/settings" element={<SettingsPage />} /><Route path="/settings/appearance" element={<AppearanceSettingsPage />} /><Route path="/settings/recipe-creation" element={<RecipeCreationSettingsPage />} /><Route path="/settings/interactive-cooking" element={<InteractiveCookingSettingsPage />} /><Route path="/settings/account" element={<AccountSettingsPage />} /><Route path="/settings/security" element={<SecuritySettingsPage />} /><Route path="/settings/about" element={<AboutSettingsPage />} /><Route path="/settings/privacy" element={<PrivacyPolicyPage />} /><Route path="/settings/terms" element={<TermsPage />} /></Route><Route path="*" element={<Navigate to={keycloak.authenticated ? '/recipes' : '/'} replace />} /></Routes> }
+function AuthBootstrap() { const [status, setStatus] = useState<'loading'|'ready'|'error'>('loading'); const [errorMessage, setErrorMessage] = useState(''); useEffect(() => { if (!hasKeycloakCallback()) { setStatus('ready'); return }; let cancelled=false; initializeKeycloak().then(authenticated => { if(cancelled)return; if(!authenticated) throw new Error('Keycloak returned without an authenticated session.'); window.history.replaceState({},document.title,'/recipes'); setStatus('ready') }).catch(error => { if(cancelled)return; console.error('Keycloak callback processing failed',error); setErrorMessage(error instanceof Error ? error.message : 'Unable to complete secure sign-in.'); setStatus('error') }); return () => {cancelled=true} }, []); if(status==='loading') return <div className="app-state"><div><div className="state-dot"/><p>Signing you in…</p></div></div>; if(status==='error') return <div className="app-state"><div className="state-card"><div className="state-dot error"/><h1>Secure sign-in could not complete.</h1><p>{errorMessage || 'Check the Keycloak URL, realm, client ID, and redirect URI configuration.'}</p><button onClick={() => window.location.assign('/')}>Back to login</button></div></div>; return <BrowserRouter><AppRoutes /></BrowserRouter> }
+export default function App() { return <QueryClientProvider client={queryClient}><AuthBootstrap /><Toaster position="top-right" toastOptions={{duration:3000}} /></QueryClientProvider> }
