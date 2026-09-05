@@ -1,0 +1,37 @@
+:root[data-theme="dark"],:root[data-theme="black"]{color-scheme:dark}
+:root[data-theme="dark"]{--theme-bg:#111827;--theme-surface:#1f2937;--theme-surface-2:#172033;--theme-border:#374151;--theme-text:#f3f4f6;--theme-muted:#a7b0bd;--theme-soft:#273244;--theme-green:#4ade80}
+:root[data-theme="black"]{--theme-bg:#000;--theme-surface:#0b0b0b;--theme-surface-2:#050505;--theme-border:#262626;--theme-text:#f5f5f5;--theme-muted:#a3a3a3;--theme-soft:#171717;--theme-green:#4ade80}
+:root[data-theme="dark"] body,:root[data-theme="black"] body{background:var(--theme-bg)!important;color:var(--theme-text)!important}
+:root[data-theme="dark"] .app-shell,:root[data-theme="black"] .app-shell,:root[data-theme="dark"] .content-shell,:root[data-theme="black"] .content-shell,:root[data-theme="dark"] .app-content,:root[data-theme="black"] .app-content{background:var(--theme-bg)!important;color:var(--theme-text)!important}
+:root[data-theme="dark"] .sidebar,:root[data-theme="black"] .sidebar{background:var(--theme-surface-2)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .app-header,:root[data-theme="black"] .app-header{background:rgba(17,24,39,.92)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .mobile-nav,:root[data-theme="black"] .mobile-nav{background:rgba(17,24,39,.97)!important;border-color:var(--theme-border)!important}
+:root[data-theme="black"] .app-header{background:rgba(0,0,0,.94)!important}
+:root[data-theme="dark"] .bg-white,:root[data-theme="black"] .bg-white{background:var(--theme-surface)!important}
+:root[data-theme="dark"] .bg-\[\#f7faf7\],:root[data-theme="black"] .bg-\[\#f7faf7\]{background:var(--theme-soft)!important}
+:root[data-theme="dark"] .text-ink,:root[data-theme="black"] .text-ink,:root[data-theme="dark"] .text-\[\#132238\],:root[data-theme="black"] .text-\[\#132238\]{color:var(--theme-text)!important}
+:root[data-theme="dark"] .text-slate-500,:root[data-theme="black"] .text-slate-500,:root[data-theme="dark"] .text-slate-400,:root[data-theme="black"] .text-slate-400{color:var(--theme-muted)!important}
+:root[data-theme="dark"] .text-slate-300,:root[data-theme="black"] .text-slate-300{color:#6b7280!important}
+:root[data-theme="dark"] .border-slate-200,:root[data-theme="black"] .border-slate-200,:root[data-theme="dark"] .border-red-200,:root[data-theme="black"] .border-red-200{border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .bg-slate-100,:root[data-theme="black"] .bg-slate-100,:root[data-theme="dark"] .bg-slate-50,:root[data-theme="black"] .bg-slate-50{background:var(--theme-soft)!important}
+:root[data-theme="dark"] .bg-slate-200,:root[data-theme="black"] .bg-slate-200{background:#374151!important}
+:root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select,:root[data-theme="black"] input,:root[data-theme="black"] textarea,:root[data-theme="black"] select{background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder,:root[data-theme="black"] input::placeholder,:root[data-theme="black"] textarea::placeholder{color:#6b7280!important}
+:root[data-theme="dark"] .ring-black\/5,:root[data-theme="black"] .ring-black\/5{--tw-ring-color:rgba(255,255,255,.08)!important}
+:root[data-theme="dark"] .shadow-sm,:root[data-theme="black"] .shadow-sm{box-shadow:0 8px 28px rgba(0,0,0,.2)!important}
+:root[data-theme="dark"] .nav-item:hover:not(.active),:root[data-theme="black"] .nav-item:hover:not(.active),:root[data-theme="dark"] .mobile-nav-item.active,:root[data-theme="black"] .mobile-nav-item.active{background:#183322!important}
+:root[data-theme="dark"] .nav-item,:root[data-theme="black"] .nav-item,:root[data-theme="dark"] .mobile-nav-item,:root[data-theme="black"] .mobile-nav-item{color:var(--theme-muted)!important}
+:root[data-theme="dark"] .nav-item.active,:root[data-theme="black"] .nav-item.active{background:#263b73!important;color:#fff!important}
+:root[data-theme="dark"] .mobile-nav-item.active,:root[data-theme="black"] .mobile-nav-item.active{color:var(--theme-green)!important}
+:root[data-theme="dark"] .app-header h1,:root[data-theme="black"] .app-header h1{color:var(--theme-text)!important}
+:root[data-theme="dark"] .app-header p,:root[data-theme="black"] .app-header p{color:var(--theme-green)!important}
+:root[data-theme="dark"] .sidebar-wordmark,:root[data-theme="black"] .sidebar-wordmark{color:var(--theme-text)!important}
+:root[data-theme="dark"] .sidebar-toggle,:root[data-theme="dark"] .mobile-logout,:root[data-theme="black"] .sidebar-toggle,:root[data-theme="black"] .mobile-logout{background:var(--theme-surface)!important;color:var(--theme-text)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .detail-card,:root[data-theme="black"] .detail-card,:root[data-theme="dark"] .detail-section,:root[data-theme="black"] .detail-section,:root[data-theme="dark"] .ingredient-list,:root[data-theme="black"] .ingredient-list,:root[data-theme="dark"] .instruction-list,:root[data-theme="black"] .instruction-list,:root[data-theme="dark"] .routine-recipe-list,:root[data-theme="black"] .routine-recipe-list{background:var(--theme-surface)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .ingredient-row,:root[data-theme="black"] .ingredient-row,:root[data-theme="dark"] .instruction-row,:root[data-theme="black"] .instruction-row,:root[data-theme="dark"] .routine-recipe-row,:root[data-theme="black"] .routine-recipe-row{background:var(--theme-surface)!important;color:var(--theme-text)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .form-card,:root[data-theme="black"] .form-card{background:var(--theme-surface)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .form-card-head h2,:root[data-theme="black"] .form-card-head h2,:root[data-theme="dark"] .form-page,:root[data-theme="black"] .form-page{color:var(--theme-text)!important}
+:root[data-theme="dark"] .form-hero p,:root[data-theme="dark"] .form-card-head p,:root[data-theme="black"] .form-hero p,:root[data-theme="black"] .form-card-head p{color:var(--theme-muted)!important}
+:root[data-theme="dark"] .primary-form-button,:root[data-theme="black"] .primary-form-button{background:#263b73!important}
+:root[data-theme="dark"] .state-card,:root[data-theme="black"] .state-card{background:var(--theme-surface)!important;border-color:var(--theme-border)!important}
+:root[data-theme="dark"] .state-card h1,:root[data-theme="black"] .state-card h1{color:var(--theme-text)!important}
