@@ -6,8 +6,26 @@ import { api } from '../api'
 
 type AnyRecord = Record<string, any>
 
-function first(value: any, fallback = '') { return value == null ? fallback : value }
 function formatTime(minutes: any) { const n = Number(minutes); return Number.isFinite(n) && n > 0 ? `${n} min` : '—' }
+function labelize(value: string) { return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) }
+function formatNutritionValue(value: any): string {
+  if (value == null) return '—'
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (Array.isArray(value)) return value.map(item => formatNutritionValue(item)).join(', ')
+  if (typeof value === 'object') {
+    return Object.entries(value).map(([key, nested]) => `${labelize(key)}: ${formatNutritionValue(nested)}`).join(' • ')
+  }
+  return String(value)
+}
+function nutritionEntries(value: any): Array<[string, string]> {
+  if (value == null) return []
+  if (Array.isArray(value)) return value.flatMap((item, index) => {
+    if (item && typeof item === 'object' && !Array.isArray(item)) return Object.entries(item).map(([key, nested]) => [key, formatNutritionValue(nested)] as [string, string])
+    return [[`Item ${index + 1}`, formatNutritionValue(item)] as [string, string]]
+  })
+  if (typeof value === 'object') return Object.entries(value).map(([key, nested]) => [key, formatNutritionValue(nested)])
+  return [['Nutrition', formatNutritionValue(value)]]
+}
 
 export function RecipeDetailPage() {
   const { recipeId } = useParams()
@@ -19,24 +37,17 @@ export function RecipeDetailPage() {
   const [cookMode, setCookMode] = useState(false)
   const [cookStep, setCookStep] = useState(0)
 
-  const query = useQuery({
-    queryKey: ['recipe-detail', recipeId],
-    queryFn: async () => (await api.recipes.get(recipeId!)).data,
-    enabled: !!recipeId,
-  })
-
+  const query = useQuery({ queryKey: ['recipe-detail', recipeId], queryFn: async () => (await api.recipes.get(recipeId!)).data, enabled: !!recipeId })
   const recipe: AnyRecord | undefined = query.data?.data ?? query.data?.recipe ?? query.data
   const ingredients = useMemo(() => recipe?.ingredients ?? [], [recipe])
   const instructions = useMemo(() => recipe?.instructions ?? recipe?.steps ?? [], [recipe])
   const nutrition = recipe?.nutrition ?? recipe?.nutrition_summary ?? {}
+  const nutritionItems = useMemo(() => nutritionEntries(nutrition), [nutrition])
   const servings = Number(recipe?.servings) || 1
   const scale = portion / servings
   const name = recipe?.name ?? recipe?.title ?? 'Recipe'
 
-  const setRatingValue = (value: number) => {
-    setRating(value)
-    toast.success(`You rated this recipe ${value} star${value > 1 ? 's' : ''}.`)
-  }
+  const setRatingValue = (value: number) => { setRating(value); toast.success(`You rated this recipe ${value} star${value > 1 ? 's' : ''}.`) }
 
   if (query.isLoading) return <div className="detail-loading"><div className="detail-spinner" /><p>Loading recipe…</p></div>
   if (query.isError || !recipe) return <div className="detail-error"><div className="detail-error-icon">!</div><h2>Couldn’t load recipe</h2><p>Please try again.</p><button onClick={() => query.refetch()}>Retry</button></div>
@@ -46,8 +57,6 @@ export function RecipeDetailPage() {
 
   return (
     <div className="detail-page">
-      <div className="detail-topbar"><button className="back-button" onClick={() => navigate(-1)}>← <span>Back</span></button><div className="detail-top-actions">{recipe?.visibility ? <span className="visibility-pill">{recipe.visibility === 'PUBLIC' ? 'Public' : recipe.visibility}</span> : null}<button className="icon-button" onClick={() => toast('Edit recipe')}>✎</button></div></div>
-
       <section className="recipe-hero-detail">
         <div className="recipe-detail-image">{recipe.image_url || recipe.image_urls?.[0] ? <img src={recipe.image_url || recipe.image_urls?.[0]} alt={name} /> : <span>🥗</span>}</div>
         <div className="recipe-detail-copy">
@@ -73,17 +82,17 @@ export function RecipeDetailPage() {
         <div className="ingredient-list">{ingredients.length ? ingredients.map((item: AnyRecord, index: number) => { const checked = !!checkedIngredients[index]; const quantity = Number(item.quantity); const scaled = Number.isFinite(quantity) ? Math.round(quantity * scale * 100) / 100 : item.quantity; return <button className={`ingredient-row ${checked ? 'checked' : ''}`} key={index} onClick={() => setCheckedIngredients(v => ({ ...v, [index]: !v[index] }))}><span className="check-circle">{checked ? '✓' : ''}</span><span className="ingredient-name">{item.name || item.ingredient_name || `Ingredient ${index + 1}`}</span><strong>{scaled ?? ''} {item.unit || ''}</strong></button> }) : <div className="empty-detail">No ingredients available.</div>}</div>
       </section>
 
-      {(nutrition && (typeof nutrition === 'object' && Object.keys(nutrition).length > 0)) && <section className="detail-section"><div className="section-heading"><div><p className="section-kicker">NUTRITION</p><h3>Nutrition</h3></div></div><div className="nutrition-grid">{Object.entries(nutrition).slice(0, 8).map(([key, value]) => <div className="nutrition-item" key={key}><strong>{String(value)}</strong><span>{key.replaceAll('_', ' ')}</span></div>)}</div></section>}
+      {nutritionItems.length > 0 && <section className="detail-section"><div className="section-heading"><div><p className="section-kicker">NUTRITION</p><h3>Nutrition</h3></div></div><div className="nutrition-grid">{nutritionItems.slice(0, 12).map(([key, value]) => <div className="nutrition-item" key={key}><strong>{value}</strong><span>{labelize(key)}</span></div>)}</div></section>}
 
       <section className="detail-section"><div className="section-heading"><div><p className="section-kicker">METHOD</p><h3>Instructions</h3></div><span>{instructions.length}</span></div>
-        <div className="instruction-list">{instructions.length ? instructions.map((step: any, index: number) => { const text = typeof step === 'string' ? step : step.instruction_text ?? step.text ?? ''; const done = !!completedSteps[index]; return <div className={`instruction-row ${done ? 'completed' : ''}`} key={index}><button className="step-check" onClick={() => setCompletedSteps(v => ({ ...v, [index]: !v[index] }))}>{done ? '✓' : index + 1}</button><div><p>{text}</p>{step?.tip ? <small>Tip: {step.tip}</small> : null}{step?.timer_seconds ? <span className="timer-pill">◷ {Math.ceil(step.timer_seconds / 60)} min</span> : null}</div></div> }) : <div className="empty-detail">No instructions available.</div>}</div>
+        <div className="instruction-list">{instructions.length ? instructions.map((step: any, index: number) => { const text = typeof step === 'string' ? step : step.instruction_text ?? step.text ?? ''; const done = !!completedSteps[index]; return <div className={`instruction-row ${done ? 'completed' : ''}`} key={index}><button className="step-check" onClick={() => setCompletedSteps(v => ({ ...v, [index]: !v[index] }))}>{done ? '✓' : index + 1}</button><div><p>{text}</p>{step?.tip ? <small>Tip: {formatNutritionValue(step.tip)}</small> : null}{step?.timer_seconds ? <span className="timer-pill">◷ {Math.ceil(step.timer_seconds / 60)} min</span> : null}</div></div> }) : <div className="empty-detail">No instructions available.</div>}</div>
       </section>
 
       <section className="cook-card"><div><p className="section-kicker">READY?</p><h3>Cook with confidence.</h3><p>Follow the recipe step by step with ingredients and timers in one place.</p></div><button onClick={() => { setCookMode(true); setCookStep(0) }}>▶ Start Cooking</button></section>
 
       <section className="detail-section rating-section"><div><p className="section-kicker">YOUR RATING</p><h3>How was this recipe?</h3></div><div className="stars">{[1,2,3,4,5].map(value => <button key={value} className={rating && value <= rating ? 'selected' : ''} onClick={() => setRatingValue(value)}>★</button>)}</div></section>
 
-      {cookMode && <div className="cook-overlay"><div className="cook-modal"><div className="cook-modal-head"><div><p className="section-kicker">COOK MODE</p><h2>Step {cookStep + 1} of {Math.max(instructions.length, 1)}</h2></div><button onClick={() => setCookMode(false)}>×</button></div><div className="cook-progress"><span style={{ width: `${instructions.length ? ((cookStep + 1) / instructions.length) * 100 : 100}%` }} /></div><p className="cook-instruction">{activeText || 'No cooking step available.'}</p>{activeInstruction?.tip ? <div className="cook-tip">Tip: {activeInstruction.tip}</div> : null}{activeInstruction?.timer_seconds ? <div className="cook-timer">◷ {Math.ceil(activeInstruction.timer_seconds / 60)} min</div> : null}<div className="cook-controls"><button disabled={cookStep === 0} onClick={() => setCookStep(s => Math.max(0, s - 1))}>← Previous</button><button onClick={() => cookStep >= instructions.length - 1 ? setCookMode(false) : setCookStep(s => s + 1)}>{cookStep >= instructions.length - 1 ? 'Finish' : 'Next →'}</button></div></div></div>}
+      {cookMode && <div className="cook-overlay"><div className="cook-modal"><div className="cook-modal-head"><div><p className="section-kicker">COOK MODE</p><h2>Step {cookStep + 1} of {Math.max(instructions.length, 1)}</h2></div><button onClick={() => setCookMode(false)}>×</button></div><div className="cook-progress"><span style={{ width: `${instructions.length ? ((cookStep + 1) / instructions.length) * 100 : 100}%` }} /></div><p className="cook-instruction">{activeText || 'No cooking step available.'}</p>{activeInstruction?.tip ? <div className="cook-tip">Tip: {formatNutritionValue(activeInstruction.tip)}</div> : null}{activeInstruction?.timer_seconds ? <div className="cook-timer">◷ {Math.ceil(activeInstruction.timer_seconds / 60)} min</div> : null}<div className="cook-controls"><button disabled={cookStep === 0} onClick={() => setCookStep(s => Math.max(0, s - 1))}>← Previous</button><button onClick={() => cookStep >= instructions.length - 1 ? setCookMode(false) : setCookStep(s => s + 1)}>{cookStep >= instructions.length - 1 ? 'Finish' : 'Next →'}</button></div></div></div>}
     </div>
   )
 }
