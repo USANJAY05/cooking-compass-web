@@ -1,0 +1,38 @@
+/* MUVETH Kitchen UI polish: quiet loading states and consistent dark surfaces. */
+.skeleton-card{border:0!important;box-shadow:none!important;background:#EEF2EE!important}
+.skeleton-block{background:#E1E8E2!important;border:0!important}
+
+:root[data-theme="dark"] .skeleton-card{background:#1b2535!important}
+:root[data-theme="dark"] .skeleton-block{background:#2a3547!important}
+:root[data-theme="black"] .skeleton-card{background:#0d0d0d!important}
+:root[data-theme="black"] .skeleton-block{background:#1b1b1b!important}
+
+/* Keep hard-coded light Tailwind utility colors aligned with the active dark form palette. */
+:root[data-theme="dark"] [class*="bg-white"],
+:root[data-theme="black"] [class*="bg-white"]{background:var(--theme-surface)!important}
+:root[data-theme="dark"] [class*="border-[#DCE5DE]"],
+:root[data-theme="black"] [class*="border-[#DCE5DE]"]{border-color:var(--theme-border)!important}
+:root[data-theme="dark"] [class*="text-[#132238]"],
+:root[data-theme="black"] [class*="text-[#132238]"]{color:var(--theme-text)!important}
+:root[data-theme="dark"] [class*="text-[#52606D]"],
+:root[data-theme="black"] [class*="text-[#52606D]"]{color:var(--theme-muted)!important}
+:root[data-theme="dark"] [class*="text-[#7A8694]"],
+:root[data-theme="black"] [class*="text-[#7A8694]"]{color:var(--theme-muted)!important}
+:root[data-theme="dark"] [class*="bg-[#E8EDE8]"],
+:root[data-theme="black"] [class*="bg-[#E8EDE8]"]{background:var(--theme-soft)!important}
+:root[data-theme="dark"] [class*="bg-[#EEF7F0]"],
+:root[data-theme="black"] [class*="bg-[#EEF7F0]"]{background:#183322!important}
+:root[data-theme="dark"] [class*="bg-red-50"],
+:root[data-theme="black"] [class*="bg-red-50"]{background:#3a2024!important}
+
+/* Forms remain intentionally recessed rather than white in dark/black themes. */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select,
+:root[data-theme="black"] input,
+:root[data-theme="black"] textarea,
+:root[data-theme="black"] select{background:var(--theme-soft)!important;color:var(--theme-text)!important;border-color:var(--theme-border)!important;box-shadow:none!important}
+
+@media (prefers-reduced-motion: reduce){
+  .skeleton-card,.skeleton-block{animation:none!important}
+}
