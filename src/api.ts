@@ -26,6 +26,13 @@ export const api = {
     search: (q: string, params?: Record<string, unknown>) => apiClient.get('/api/v1/recipes/search', { params: { q, ...params } }),
     get: (id: number | string) => apiClient.get(`/api/v1/recipes/${id}`),
   },
+  images: {
+    uploadUrl: (contentType: string, contentLength: number) =>
+      apiClient.post('/api/v1/images/upload-url', {
+        content_type: contentType,
+        content_length: contentLength,
+      }),
+  },
   routines: {
     list: (params?: Record<string, unknown>) => apiClient.get('/api/v1/routines/', { params }),
     search: (q: string, params?: Record<string, unknown>) => apiClient.get('/api/v1/routines/search', { params: { q, ...params } }),
